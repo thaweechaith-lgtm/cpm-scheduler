@@ -1,0 +1,2432 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CPM Scheduler — EGAT</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=Syne:wght@600;700;800&family=Sarabun:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+/* ── Reset & Root ── */
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg0:    #F4F6F9;
+  --bg1:    #FFFFFF;
+  --bg2:    #F8FAFB;
+  --bg3:    #FFFFFF;
+  --bg4:    #EDF1F5;
+  --line:   #DDE3EA;
+  --line2:  #C8D2DC;
+  --accent: #1468B3;
+  --accent2:#0891B2;
+  --gold:   #D97706;
+  --red:    #DC2626;
+  --green:  #16A34A;
+  --amber:  #EA580C;
+  --purple: #7C3AED;
+  --txt:    #0F172A;
+  --txt2:   #334155;
+  --txt3:   #64748B;
+  --mono:   'DM Mono',monospace;
+  --sans:   'Sarabun',sans-serif;
+  --display:'Syne',sans-serif;
+  --tab-h:  48px;
+  --sidebar-w: 0px;
+}
+html,body{height:100%;overflow:hidden}
+body{font-family:var(--sans);background:var(--bg0);color:var(--txt);font-size:13px;line-height:1.5}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:var(--bg1)}
+::-webkit-scrollbar-thumb{background:var(--line2);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--accent)}
+
+/* ── Layout ── */
+#app{display:flex;flex-direction:column;height:100vh}
+
+/* ── Topbar ── */
+#topbar{
+  background:var(--bg1);
+  border-bottom:2px solid var(--line2);
+  display:flex;align-items:center;
+  padding:0 20px;height:56px;
+  flex-shrink:0;gap:16px;
+  position:relative;
+  box-shadow:0 1px 4px rgba(0,0,0,.06);
+}
+#topbar .logo{
+  font-family:var(--display);font-size:16px;font-weight:800;
+  color:var(--txt);letter-spacing:-.3px;
+  display:flex;align-items:center;gap:8px;white-space:nowrap;
+  border-right:2px solid var(--accent); padding-right:14px; margin-right:2px;
+}
+#topbar .logo span{color:var(--accent)}
+#topbar .proj-name{
+  font-family:var(--mono);font-size:12px;
+  color:var(--txt2);border-left:1px solid var(--line);
+  padding-left:16px;max-width:260px;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap;
+}
+#topbar .spacer{flex:1}
+.top-btn{
+  font-family:var(--mono);font-size:11px;font-weight:500;
+  padding:6px 14px;border-radius:4px;cursor:pointer;
+  border:1px solid var(--line2);background:transparent;
+  color:var(--txt2);transition:all .15s;white-space:nowrap;
+}
+.top-btn:hover{background:var(--bg3);color:var(--txt);border-color:var(--accent)}
+.top-btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.top-btn.primary:hover{background:#1a7dbb}
+.data-date-badge{
+  font-family:var(--mono);font-size:10px;
+  color:var(--gold);background:rgba(245,166,35,.1);
+  border:1px solid rgba(245,166,35,.3);
+  padding:4px 10px;border-radius:3px;white-space:nowrap;
+}
+
+/* ── Tab bar ── */
+#tabbar{
+  background:var(--bg1);border-bottom:1px solid var(--line);
+  display:flex;align-items:flex-end;
+  padding:0 20px;height:var(--tab-h);flex-shrink:0;gap:2px;
+}
+.tab{
+  font-family:var(--mono);font-size:11px;font-weight:500;
+  padding:0 16px;height:36px;
+  display:flex;align-items:center;gap:6px;
+  cursor:pointer;border-radius:4px 4px 0 0;
+  color:var(--txt3);border:1px solid transparent;
+  border-bottom:none;transition:all .15s;letter-spacing:.3px;
+}
+.tab:hover{color:var(--txt2);background:var(--bg2)}
+.tab.active{
+  color:var(--accent);background:var(--bg2);
+  border-color:var(--line2);border-bottom-color:var(--bg2);
+  font-weight:600;
+}
+.tab .dot{width:6px;height:6px;border-radius:50%;background:var(--txt3)}
+.tab.active .dot{background:var(--accent);box-shadow:0 0 0 2px rgba(20,104,179,.2)}
+
+/* ── Content area ── */
+#content{flex:1;overflow:hidden;background:var(--bg2)}
+.panel{display:none;height:100%;overflow-y:auto;padding:24px}
+.panel.active{display:block}
+#panel-gantt{padding:0;overflow:hidden;display:none}
+#panel-gantt.active{display:flex;flex-direction:column}
+#panel-gantt.active #gantt-outer{flex:1;min-height:0}
+
+/* ── Cards & sections ── */
+.section-title{
+  font-family:var(--display);font-size:13px;font-weight:700;
+  color:var(--txt2);letter-spacing:1.2px;text-transform:uppercase;
+  margin-bottom:14px;display:flex;align-items:center;gap:8px;
+}
+.section-title::after{content:'';flex:1;height:1px;background:var(--line)}
+
+.card{
+  background:var(--bg1);border:1px solid var(--line);
+  border-radius:6px;padding:18px 20px;
+  box-shadow:0 1px 3px rgba(0,0,0,.04);
+}
+.card-grid{display:grid;gap:12px;margin-bottom:24px}
+.card-grid.cols-2{grid-template-columns:repeat(2,1fr)}
+.card-grid.cols-3{grid-template-columns:repeat(3,1fr)}
+.card-grid.cols-4{grid-template-columns:repeat(4,1fr)}
+.card-grid.cols-6{grid-template-columns:repeat(6,1fr)}
+
+/* ── KPI cards ── */
+.kpi-card{
+  background:var(--bg1);border:1px solid var(--line);
+  border-radius:6px;padding:16px 18px;
+  display:flex;flex-direction:column;gap:4px;
+  transition:all .2s;
+  box-shadow:0 1px 3px rgba(0,0,0,.04);
+}
+.kpi-card:hover{border-color:var(--accent);box-shadow:0 2px 8px rgba(20,104,179,.08);transform:translateY(-1px)}
+.kpi-label{font-family:var(--mono);font-size:9px;font-weight:500;
+  color:var(--txt3);text-transform:uppercase;letter-spacing:.8px}
+.kpi-value{font-family:var(--display);font-size:26px;font-weight:700;color:var(--txt);line-height:1}
+.kpi-sub{font-family:var(--mono);font-size:10px;color:var(--txt3);margin-top:2px}
+.kpi-card.accent{border-left:3px solid var(--accent)}
+.kpi-card.red{border-left:3px solid var(--red)}
+.kpi-card.green{border-left:3px solid var(--green)}
+.kpi-card.amber{border-left:3px solid var(--amber)}
+.kpi-card.gold{border-left:3px solid var(--gold)}
+
+/* ── Progress bar ── */
+.progress-track{height:6px;background:var(--line);border-radius:3px;overflow:hidden;margin-top:8px}
+.progress-fill{height:100%;border-radius:3px;transition:width .6s ease}
+
+/* ── Forms ── */
+.form-grid{display:grid;gap:12px;margin-bottom:20px}
+.form-grid.cols-2{grid-template-columns:repeat(2,1fr)}
+.form-grid.cols-3{grid-template-columns:repeat(3,1fr)}
+.form-grid.cols-4{grid-template-columns:repeat(4,1fr)}
+.form-row{display:flex;flex-direction:column;gap:4px}
+label{font-family:var(--mono);font-size:10px;color:var(--txt3);letter-spacing:.5px;text-transform:uppercase}
+input,select,textarea{
+  background:var(--bg1);border:1px solid var(--line);
+  color:var(--txt);font-family:var(--mono);font-size:12px;
+  padding:7px 10px;border-radius:4px;outline:none;
+  transition:border-color .15s;width:100%;
+}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);background:var(--bg2)}
+input[readonly]{color:var(--txt3);cursor:not-allowed}
+select option{background:var(--bg2)}
+
+/* ── Buttons ── */
+.btn{
+  font-family:var(--mono);font-size:11px;font-weight:500;
+  padding:8px 16px;border-radius:4px;cursor:pointer;
+  border:1px solid var(--line2);background:var(--bg3);
+  color:var(--txt2);transition:all .15s;
+}
+.btn:hover{color:var(--txt);border-color:var(--accent);background:var(--bg4)}
+.btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.btn.primary:hover{background:#1a7dbb}
+.btn.danger{background:rgba(229,72,77,.1);color:var(--red);border-color:rgba(229,72,77,.3)}
+.btn.danger:hover{background:var(--red);color:#fff}
+.btn.success{background:rgba(48,164,108,.1);color:var(--green);border-color:rgba(48,164,108,.3)}
+.btn.success:hover{background:var(--green);color:#fff}
+.btn-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+
+/* ── Table ── */
+.tbl-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:6px}
+table{width:100%;border-collapse:collapse;min-width:max-content}
+thead tr{background:var(--bg4)}
+thead th{
+  font-family:var(--mono);font-size:9px;font-weight:500;
+  color:var(--txt3);text-transform:uppercase;letter-spacing:.7px;
+  padding:10px 12px;text-align:left;
+  border-bottom:1px solid var(--line);
+  white-space:nowrap;cursor:pointer;user-select:none;
+}
+thead th:hover{color:var(--txt2)}
+tbody tr{border-bottom:1px solid var(--line);transition:background .1s}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:#EBF3FA}
+tbody td{
+  font-family:var(--mono);font-size:11px;color:var(--txt2);
+  padding:8px 12px;white-space:nowrap;
+}
+tbody td.name-col{color:var(--txt);max-width:280px;overflow:hidden;text-overflow:ellipsis}
+.tr-l1{background:#E8F1FA!important}
+.tr-l1 td{color:var(--accent)!important;font-weight:700}
+.tr-l2{background:#F0F6FC!important}
+.tr-l2 td{color:var(--accent)!important}
+.tr-crit td.name-col{color:var(--red)!important}
+
+/* ── Badges ── */
+.badge{
+  display:inline-flex;align-items:center;
+  font-family:var(--mono);font-size:9px;font-weight:500;
+  padding:2px 7px;border-radius:3px;white-space:nowrap;
+}
+.badge.green{background:rgba(48,164,108,.15);color:var(--green);border:1px solid rgba(48,164,108,.25)}
+.badge.red{background:rgba(229,72,77,.15);color:var(--red);border:1px solid rgba(229,72,77,.25)}
+.badge.amber{background:rgba(247,104,8,.15);color:var(--amber);border:1px solid rgba(247,104,8,.25)}
+.badge.blue{background:rgba(30,143,213,.15);color:var(--accent);border:1px solid rgba(30,143,213,.25)}
+.badge.grey{background:rgba(85,106,130,.15);color:var(--txt3);border:1px solid var(--line)}
+.badge.gold{background:rgba(245,166,35,.15);color:var(--gold);border:1px solid rgba(245,166,35,.25)}
+.badge.crit{background:rgba(229,72,77,.2);color:#ff8a8d;border:1px solid rgba(229,72,77,.4);font-weight:600}
+
+/* ── Toast ── */
+#toast{
+  position:fixed;bottom:24px;right:24px;z-index:9999;
+  background:var(--bg4);border:1px solid var(--line2);
+  color:var(--txt);font-family:var(--mono);font-size:12px;
+  padding:12px 18px;border-radius:6px;
+  box-shadow:0 8px 24px rgba(0,0,0,.5);
+  transform:translateY(80px);opacity:0;
+  transition:all .25s ease;pointer-events:none;
+}
+#toast.show{transform:translateY(0);opacity:1}
+#toast.success{border-left:3px solid var(--green)}
+#toast.error{border-left:3px solid var(--red)}
+
+/* ── Modal ── */
+#modal-overlay{
+  display:none;position:fixed;inset:0;
+  background:rgba(0,0,0,.7);z-index:1000;
+  align-items:center;justify-content:center;
+}
+#modal-overlay.open{display:flex}
+#modal{
+  background:var(--bg1);border:1px solid var(--line2);
+  box-shadow:0 20px 60px rgba(0,0,0,.12);
+  border-radius:8px;padding:24px;width:600px;max-width:95vw;
+  max-height:90vh;overflow-y:auto;
+  box-shadow:0 24px 64px rgba(0,0,0,.6);
+}
+#modal h3{font-family:var(--display);font-size:16px;font-weight:700;margin-bottom:20px;color:var(--txt)}
+.modal-footer{display:flex;gap:8px;justify-content:flex-end;margin-top:20px;padding-top:16px;border-top:1px solid var(--line)}
+
+/* ── Settings panel ── */
+.settings-block{margin-bottom:28px}
+.settings-block .card{padding:20px 24px}
+
+/* ── Gantt ── */
+#gantt-toolbar{
+  background:var(--bg1);border-bottom:1px solid var(--line2);
+  padding:4px 10px;display:flex;align-items:center;gap:5px;
+  flex-shrink:0;flex-wrap:nowrap;overflow-x:auto;
+  min-height:32px;
+}
+#gantt-toolbar .sep{width:1px;height:16px;background:var(--line);flex-shrink:0}
+#gantt-toolbar .lbl{font-family:var(--mono);font-size:9px;color:var(--txt3);white-space:nowrap;flex-shrink:0}
+#gantt-toolbar select{font-family:var(--mono);font-size:10px;padding:2px 4px;border:1px solid var(--line2);border-radius:3px;background:var(--bg1);color:var(--txt);flex-shrink:0}
+#gantt-toolbar .btn{padding:3px 8px;font-size:10px;flex-shrink:0}
+/* ── Gantt outer wrapper ── */
+#gantt-outer{flex:1;display:flex;flex-direction:column;overflow:hidden;min-height:0}
+
+/* ── Fixed header row (cols + time header, never scrolls vertically) ── */
+#gantt-header-row{
+  display:flex;flex-shrink:0;
+  border-bottom:2px solid var(--line2);
+  background:var(--bg4);
+  overflow:hidden;
+}
+#gantt-header-left{
+  width:512px;min-width:512px;flex-shrink:0;
+  background:var(--bg4);
+  display:grid;grid-template-columns:36px 200px 80px 66px 66px 36px;
+  border-right:2px solid var(--line2);
+  z-index:10;
+  /* +6px right padding to match scrollbar gutter in gantt-left */
+  padding-right:0;
+  box-sizing:border-box;
+}
+#gantt-header-left span{
+  font-family:var(--mono);font-size:9px;color:var(--txt2);font-weight:600;
+  letter-spacing:.6px;text-transform:uppercase;
+  padding:8px 6px;border-right:1px solid var(--line);
+  display:flex;align-items:center;
+}
+/* Right side of fixed header — scrolls only horizontally in sync */
+#gantt-header-right{
+  flex:1;overflow:hidden;  /* overflow hidden — scrolled by JS */
+}
+#gantt-time-header{
+  background:var(--accent);
+  border-bottom:2px solid rgba(0,0,0,.1);
+  width:max-content;  /* expands to full chart width */
+}
+
+/* ── Scrollable body ── */
+#gantt-body{flex:1;display:flex;overflow:hidden;min-height:0}
+#gantt-left{
+  width:512px;min-width:512px;
+  border-right:2px solid var(--line2);
+  overflow-y:scroll;overflow-x:hidden;   /* scroll=always → header stays aligned */
+  flex-shrink:0;
+}
+#gantt-right{flex:1;overflow:auto}
+
+/* Gantt rows */
+.g-row-group{}
+.g-info-row{
+  display:grid;grid-template-columns:36px 200px 80px 66px 66px 36px;
+  border-bottom:1px solid var(--line);
+  align-items:center;transition:background .1s;
+  box-sizing:border-box;overflow:hidden;
+}
+.g-info-row:hover{background:var(--bg4)!important}
+.g-chart-row{
+  border-bottom:1px solid var(--line);
+  position:relative;background:var(--bg2);
+  overflow:hidden;
+  box-sizing:border-box;flex-shrink:0;
+}
+.g-bar-row{
+  height:10px;display:flex;align-items:center;
+  border-bottom:1px dotted rgba(42,63,88,.5);
+  position:relative;
+}
+.g-bar-row:last-child{border-bottom:1px solid var(--line)}
+
+.g-cell{
+  padding:5px 6px;font-family:var(--mono);
+  font-size:10px;color:var(--txt2);
+  border-right:1px solid var(--line);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  align-self:stretch;display:flex;align-items:center;
+}
+.g-cell.name{font-size:11px;color:var(--txt)}
+.g-cell.id{justify-content:center;font-size:9px;color:var(--txt3)}
+.g-cell.pct{justify-content:center}
+.g-cell.date{font-size:9px;justify-content:center}
+.g-cell.edit{cursor:pointer;position:relative}
+.g-cell.edit:hover{background:rgba(20,104,179,.08)}
+.g-cell.edit input{
+  position:absolute;inset:0;border:none;outline:none;
+  font-family:var(--mono);font-size:9px;text-align:center;
+  background:var(--bg2);color:var(--txt);padding:0 2px;
+  border:1.5px solid var(--accent);z-index:2;
+}
+.g-lv1{background:#E8F1FA!important}
+.g-lv1 .g-cell{color:var(--accent)!important;font-weight:700}
+.g-lv2{background:#F0F6FC!important}
+.g-lv2 .g-cell{color:var(--accent)!important;font-weight:500}
+.g-crit .g-cell.name{color:var(--red)!important;font-weight:600}
+
+/* ── Delay panel ── */
+.delay-card{
+  background:var(--bg3);border:1px solid var(--line);
+  border-radius:6px;padding:14px 16px;margin-bottom:8px;
+  border-left:3px solid var(--line);transition:all .15s;
+}
+.delay-card:hover{border-color:var(--line2);background:#F0F6FC;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.delay-card.rag-red{border-left-color:var(--red)}
+.delay-card.rag-amber{border-left-color:var(--amber)}
+.delay-card.rag-green{border-left-color:var(--green)}
+.delay-card-header{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.delay-card-body{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;font-family:var(--mono);font-size:10px}
+.delay-card-body .dl{display:flex;flex-direction:column;gap:2px}
+.delay-card-body .dl span:first-child{color:var(--txt3);font-size:9px;text-transform:uppercase;letter-spacing:.5px}
+.delay-card-body .dl span:last-child{color:var(--txt2)}
+
+/* ── Phase breakdown ── */
+.phase-row{
+  display:grid;grid-template-columns:180px 1fr 80px 60px 60px;
+  gap:12px;align-items:center;padding:10px 0;
+  border-bottom:1px solid var(--line);
+}
+.phase-row:last-child{border-bottom:none}
+.phase-name{font-size:12px;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* ── CP strip ── */
+#cp-strip{
+  background:rgba(229,72,77,.08);border:1px solid rgba(229,72,77,.2);
+  border-radius:6px;padding:12px 16px;margin-bottom:20px;
+  font-family:var(--mono);font-size:11px;color:var(--txt2);
+  line-height:1.8;
+}
+#cp-strip strong{color:var(--red);font-size:10px;display:block;margin-bottom:4px;letter-spacing:.8px;text-transform:uppercase}
+
+/* ── Tooltip ── */
+#tip{
+  display:none;position:fixed;pointer-events:none;
+  background:#1E293B;border:1px solid #334155;
+  color:#E2E8F0;font-family:var(--mono);font-size:10px;
+  padding:10px 14px;border-radius:5px;
+  box-shadow:0 8px 32px rgba(0,0,0,.2);
+  z-index:9000;max-width:260px;line-height:1.8;
+}
+
+/* ── Responsive ── */
+@media(max-width:768px){
+  .card-grid.cols-6{grid-template-columns:repeat(3,1fr)}
+  .card-grid.cols-4{grid-template-columns:repeat(2,1fr)}
+  .card-grid.cols-3{grid-template-columns:repeat(2,1fr)}
+  #gantt-header-left{width:360px;min-width:360px;grid-template-columns:30px 130px 50px 56px 56px 30px}
+  #gantt-left{width:360px;min-width:360px}
+  .g-info-row{grid-template-columns:30px 130px 50px 56px 56px 30px}
+}
+
+/* ── Print ── */
+@media print{
+  #topbar,#tabbar,#gantt-toolbar,.btn-row{display:none!important}
+  #content{overflow:visible!important}
+  .panel{display:block!important;overflow:visible!important}
+  #panel-gantt{display:flex!important}
+}
+
+/* ── Animations ── */
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.panel.active > *{animation:fadeIn .2s ease forwards}
+</style>
+
+<!-- PWA -->
+
+</head>
+<body>
+<div id="app">
+
+<!-- Topbar -->
+<div id="topbar">
+  <div class="logo">⬡ <span>CPM</span>SCHED</div>
+  <div class="proj-name" id="topbar-proj">No project loaded</div>
+  <div class="spacer"></div>
+  <div class="data-date-badge" id="topbar-date">Data Date: —</div>
+  <button class="top-btn" onclick="importExcel()">📥 Import Excel</button>
+  <button class="top-btn" id="btn-undo" onclick="undo()" style="opacity:.4" disabled title="Nothing to undo">↩ Undo</button>
+  <button class="top-btn primary" onclick="runCPM()">▶ Calculate CPM</button>
+  <button class="top-btn" onclick="setBaseline()" style="background:rgba(22,163,74,.1);color:var(--green);border-color:rgba(22,163,74,.4)">📌 Set Baseline</button>
+</div>
+
+<!-- Tabs -->
+<div id="tabbar">
+  <div class="tab active" onclick="switchTab('dashboard')" id="tab-dashboard">
+    <span class="dot"></span>DASHBOARD
+  </div>
+  <div class="tab" onclick="switchTab('tasks')" id="tab-tasks">
+    <span class="dot"></span>TASK INPUT
+  </div>
+  <div class="tab" onclick="switchTab('gantt')" id="tab-gantt">
+    <span class="dot"></span>GANTT
+  </div>
+  <div class="tab" onclick="switchTab('schedule')" id="tab-schedule">
+    <span class="dot"></span>SCHEDULE
+  </div>
+  <div class="tab" onclick="switchTab('delay')" id="tab-delay">
+    <span class="dot"></span>DELAY ANALYSIS
+  </div>
+  <div class="tab" onclick="switchTab('settings')" id="tab-settings">
+    <span class="dot"></span>SETTINGS
+  </div>
+</div>
+
+<!-- Content -->
+<div id="content">
+
+  <!-- Dashboard -->
+  <div class="panel active" id="panel-dashboard">
+    <div id="cp-strip"><strong>★ Critical Path</strong><span id="cp-text">Run CPM to calculate</span></div>
+    <div class="card-grid cols-6" id="kpi-grid">
+      <div class="kpi-card accent"><div class="kpi-label">Total Tasks</div><div class="kpi-value" id="kpi-total">—</div></div>
+      <div class="kpi-card green"><div class="kpi-label">Complete</div><div class="kpi-value" id="kpi-done">—</div></div>
+      <div class="kpi-card amber"><div class="kpi-label">In Progress</div><div class="kpi-value" id="kpi-prog">—</div></div>
+      <div class="kpi-card red"><div class="kpi-label">Delayed</div><div class="kpi-value" id="kpi-delay">—</div></div>
+      <div class="kpi-card gold"><div class="kpi-label">Critical Tasks</div><div class="kpi-value" id="kpi-crit">—</div></div>
+      <div class="kpi-card accent"><div class="kpi-label">Est. Finish</div><div class="kpi-value" style="font-size:15px" id="kpi-finish">—</div></div>
+    </div>
+    <div class="card-grid cols-2" style="margin-bottom:24px">
+      <div class="card">
+        <div class="section-title">Schedule Performance</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div><div style="font-family:var(--mono);font-size:10px;color:var(--txt3);margin-bottom:4px">PLANNED %</div>
+            <div style="font-family:var(--display);font-size:22px;font-weight:700" id="planned-pct">—</div></div>
+          <div><div style="font-family:var(--mono);font-size:10px;color:var(--txt3);margin-bottom:4px">ACTUAL %</div>
+            <div style="font-family:var(--display);font-size:22px;font-weight:700" id="actual-pct">—</div></div>
+        </div>
+        <div class="progress-track" style="margin-top:12px">
+          <div class="progress-fill" id="plan-bar" style="width:0%;background:var(--line2)"></div>
+        </div>
+        <div class="progress-track" style="margin-top:4px">
+          <div class="progress-fill" id="actual-bar" style="width:0%;background:var(--accent)"></div>
+        </div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--txt3);margin-top:8px">
+          SPI: <span id="spi-val" style="color:var(--txt)">—</span> &nbsp;|&nbsp;
+          Variance: <span id="svar-val">—</span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="section-title">Project Info</div>
+        <div style="display:grid;gap:8px;font-family:var(--mono);font-size:11px">
+          <div style="display:flex;justify-content:space-between;border-bottom:1px solid var(--line);padding-bottom:6px">
+            <span style="color:var(--txt3)">Project</span><span id="info-proj" style="color:var(--txt)">—</span></div>
+          <div style="display:flex;justify-content:space-between;border-bottom:1px solid var(--line);padding-bottom:6px">
+            <span style="color:var(--txt3)">PM</span><span id="info-pm" style="color:var(--txt)">—</span></div>
+          <div style="display:flex;justify-content:space-between;border-bottom:1px solid var(--line);padding-bottom:6px">
+            <span style="color:var(--txt3)">Start</span><span id="info-start" style="color:var(--txt)">—</span></div>
+          <div style="display:flex;justify-content:space-between;border-bottom:1px solid var(--line);padding-bottom:6px">
+            <span style="color:var(--txt3)">Est. Finish</span><span id="info-finish" style="color:var(--txt)">—</span></div>
+          <div style="display:flex;justify-content:space-between">
+            <span style="color:var(--txt3)">Duration</span><span id="info-dur" style="color:var(--txt)">—</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="section-title">Phase Breakdown (WBS Level 1)</div>
+    <div id="phase-breakdown" class="card"></div>
+  </div>
+
+  <!-- Task Input -->
+  <div class="panel" id="panel-tasks">
+    <div class="btn-row">
+      <button class="btn primary" onclick="openAddTask()">+ Add Task</button>
+      <button class="btn success" onclick="runCPM()">▶ Calculate CPM</button>
+      <button class="btn" onclick="importExcel()">📥 Import Excel</button>
+      <button class="btn" onclick="exportExcel()">📤 Export Excel</button>
+      <button class="btn danger" onclick="clearAll()" style="margin-left:auto">🗑 Clear All</button>
+    </div>
+    <div style="margin-bottom:10px;font-family:var(--mono);font-size:10px;color:var(--txt3)">
+      <span id="task-count">0 tasks</span> &nbsp;|&nbsp;
+      WBS: <span style="color:var(--txt2)">'1'=Phase &nbsp; '1.2'=Sub-phase &nbsp; '1.2.3'=Activity (dur>0)</span> &nbsp;|&nbsp;
+      Predecessor: <span style="color:var(--accent2)">ID+Type+Lag  e.g. 1010FS  2020SS+5  3000FF-2</span>
+    </div>
+    <div class="tbl-wrap">
+      <table id="task-table">
+        <thead>
+          <tr>
+            <th>ID</th><th>WBS</th><th>Name</th><th>Phase</th>
+            <th>Dur</th><th>Predecessors</th>
+            <th>Act.Start</th><th>Act.Finish</th><th>%</th>
+            <th>BL Start ▶</th><th>BL Finish ▶</th><th>TF</th><th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="task-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Gantt -->
+  <div class="panel" id="panel-gantt">
+    <div id="gantt-toolbar">
+      <span class="lbl">⊤</span>
+      <select id="g-top-scale" onchange="setGScale()" style="width:44px">
+        <option value="year">Yr</option><option value="half">½Y</option>
+        <option value="quarter" selected>Q</option><option value="month">Mo</option><option value="week">Wk</option>
+      </select>
+      <span class="lbl">⊥</span>
+      <select id="g-bot-scale" onchange="setGScale()" style="width:44px">
+        <option value="quarter">Q</option><option value="month" selected>Mo</option>
+        <option value="week">Wk</option><option value="day">Dy</option>
+      </select>
+      <button class="btn" onclick="adjustZoom(-2)" title="Zoom Out" style="padding:2px 8px;font-size:14px;line-height:1;flex-shrink:0">−</button>
+      <input id="g-col-width" type="range" min="4" max="60" value="16" oninput="setGColWidth(this.value)" style="width:60px;cursor:pointer;flex-shrink:0">
+      <button class="btn" onclick="adjustZoom(+2)" title="Zoom In" style="padding:2px 8px;font-size:14px;line-height:1;flex-shrink:0">+</button>
+      <span id="g-cw-label" class="lbl" style="min-width:20px">16px</span>
+      <div class="sep"></div>
+      <button class="btn" onclick="gFilter('all')" id="gf-all" style="background:var(--accent);color:#fff;border-color:var(--accent)">All</button>
+      <button class="btn" onclick="gFilter('critical')">Crit</button>
+      <button class="btn" onclick="gFilter('delayed')">Delay</button>
+      <button class="btn" onclick="gFilter('inprog')">InProg</button>
+      <div class="sep"></div>
+      <button class="btn" onclick="toggleSummaryRows()">Σ</button>
+      <div class="sep"></div>
+      <span class="lbl">From:</span>
+      <input id="g-view-start" type="date" onchange="setViewRange()" style="font-family:var(--mono);font-size:10px;padding:2px 4px;border:1px solid var(--line2);border-radius:3px;background:var(--bg1);color:var(--txt);flex-shrink:0;width:108px">
+      <span class="lbl">To:</span>
+      <input id="g-view-end" type="date" onchange="setViewRange()" style="font-family:var(--mono);font-size:10px;padding:2px 4px;border:1px solid var(--line2);border-radius:3px;background:var(--bg1);color:var(--txt);flex-shrink:0;width:108px">
+      <button class="btn" onclick="resetViewRange()" style="padding:2px 7px;font-size:10px" title="Reset to full project">↺</button>
+      <div class="sep"></div>
+      <span class="lbl">BL:</span>
+      <select id="bl-selector" onchange="switchBaseline(parseInt(this.value))">
+        <option value="-1">— None —</option>
+      </select>
+      <button class="btn" id="btn-del-bl" onclick="deleteBaseline(S.activeBL)" style="padding:2px 5px;font-size:9px;color:var(--red);display:none">✕</button>
+      <div style="flex:1;min-width:4px"></div>
+      <div style="display:flex;gap:6px;font-family:var(--mono);font-size:8px;align-items:center;flex-shrink:0;color:var(--txt3)">
+        <span style="display:flex;gap:2px;align-items:center"><span style="width:10px;height:4px;background:#999;display:block"></span>BL</span>
+        <span style="display:flex;gap:2px;align-items:center"><span style="width:10px;height:4px;background:#2563EB;display:block"></span>Plan</span>
+        <span style="display:flex;gap:2px;align-items:center"><span style="width:10px;height:4px;background:#2E8B2E;display:block"></span>Act</span>
+        <span style="display:flex;gap:2px;align-items:center"><span style="width:10px;height:4px;background:#CC0000;display:block"></span>Crit</span>
+        <span style="display:flex;gap:2px;align-items:center"><span style="width:0;height:8px;border-left:1.5px dashed #2E8B2E;display:block"></span>DD</span>
+      </div>
+    </div>
+    <div id="gantt-outer">
+      <!-- Fixed header row — never scrolls vertically -->
+      <div id="gantt-header-row">
+        <div id="gantt-header-left">
+          <span>ID</span><span>Name</span><span>Pred</span><span>Act.Start</span><span>Act.Finish</span><span>%</span>
+        </div>
+        <div id="gantt-header-right">
+          <div id="gantt-time-header"></div>
+        </div>
+      </div>
+      <!-- Scrollable body -->
+      <div id="gantt-body">
+        <div id="gantt-left">
+          <div id="gantt-rows-left"></div>
+        </div>
+        <div id="gantt-right">
+          <div id="gantt-rows-right"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Schedule -->
+  <div class="panel" id="panel-schedule">
+    <div class="btn-row">
+      <button class="btn" onclick="renderSchedule('all')">All</button>
+      <button class="btn" onclick="renderSchedule('critical')">Critical Only</button>
+      <button class="btn" onclick="renderSchedule('delayed')">Delayed</button>
+      <button class="btn" onclick="exportExcel()">📤 Export Excel</button>
+    </div>
+    <div class="tbl-wrap">
+      <table id="sched-table">
+        <thead>
+          <tr>
+            <th>ID</th><th>WBS</th><th>Name</th><th>Phase</th><th>Dur</th>
+            <th>ES</th><th>EF</th><th>LS</th><th>LF</th>
+            <th>BL Start</th><th>BL Finish</th>
+            <th>TF</th><th>FF</th>
+            <th>Act.Start</th><th>Act.Finish</th>
+            <th>Var.S</th><th>Var.F</th>
+            <th>%</th><th>Critical</th><th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="sched-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Delay Analysis -->
+  <div class="panel" id="panel-delay">
+    <div id="delay-summary" style="margin-bottom:20px"></div>
+    <div id="delay-list"></div>
+  </div>
+
+  <!-- Settings -->
+  <div class="panel" id="panel-settings">
+    <div class="settings-block">
+      <div class="section-title">Project Settings</div>
+      <div class="card">
+        <div class="form-grid cols-2">
+          <div class="form-row"><label>Project Name</label>
+            <input id="s-name" type="text" value="EGAT 115/22 kV Substation"></div>
+          <div class="form-row"><label>Project Manager</label>
+            <input id="s-pm" type="text" value="วิศวกร ผู้จัดการ"></div>
+          <div class="form-row"><label>Project Start Date</label>
+            <input id="s-start" type="date" value="2025-01-06"></div>
+          <div class="form-row"><label>Data Date (สถานะวันนี้)</label>
+            <input id="s-data" type="date" value="2025-02-07"></div>
+          <div class="form-row"><label>Working Days / Week</label>
+            <select id="s-wdays"><option value="5" selected>5 วัน (จ–ศ)</option><option value="6">6 วัน (จ–ส)</option><option value="7">7 วัน (ทุกวัน)</option></select></div>
+          <div class="form-row" style="grid-column:1/-1">
+            <label>Phase / Discipline List &nbsp;<span style="color:var(--txt3);font-weight:400;text-transform:none;letter-spacing:0">(แก้ไข เพิ่ม ลบ จัดลำดับได้)</span></label>
+            <div id="phase-manager" style="background:var(--bg4);border:1px solid var(--line);border-radius:4px;padding:10px 12px;max-height:260px;overflow-y:auto"></div>
+            <div style="display:flex;gap:6px;margin-top:6px">
+              <input id="new-phase-input" type="text" placeholder="ชื่อ Phase ใหม่" style="flex:1">
+              <button class="btn primary" onclick="addPhase()" style="white-space:nowrap">+ เพิ่ม Phase</button>
+            </div>
+          </div>
+        </div>
+        <div class="btn-row" style="margin-bottom:0">
+          <button class="btn primary" onclick="saveSettings()">Save Settings</button>
+          <button class="btn success" onclick="loadSample()">Load EGAT Sample Data</button>
+          <button class="btn" onclick="exportProject()">💾 Export Project JSON</button>
+          <button class="btn" onclick="document.getElementById('import-json').click()">📂 Import Project JSON</button>
+          <input type="file" id="import-json" accept=".json" style="display:none" onchange="importProjectJSON(event)">
+          <input type="file" id="import-xlsx" accept=".xlsx,.xls" style="display:none" onchange="handleImportExcel(event)">
+        </div>
+      </div>
+    </div>
+    <div class="settings-block">
+      <div class="section-title">Quick Help</div>
+      <div class="card" style="font-family:var(--mono);font-size:11px;line-height:2;color:var(--txt2)">
+        <div><span style="color:var(--accent2)">WBS Format:</span> &nbsp; <span style="color:var(--gold)">'2'</span> = Phase &nbsp; <span style="color:var(--gold)">'2.1'</span> = Sub-phase &nbsp; <span style="color:var(--gold)">'2.1.3'</span> = Activity</div>
+        <div><span style="color:var(--accent2)">Summary rule:</span> &nbsp; Duration = 0 → Summary row (BL auto-calculated)</div>
+        <div><span style="color:var(--accent2)">Predecessor:</span> &nbsp; <span style="color:var(--txt)">1010FS</span> &nbsp; <span style="color:var(--txt)">2020SS+5</span> &nbsp; <span style="color:var(--txt)">3000FF-2</span> &nbsp; <span style="color:var(--txt)">4010SF+90</span> &nbsp; multiple: <span style="color:var(--txt)">1010FS|2020SS+5</span></div>
+        <div><span style="color:var(--accent2)">Rel types:</span> &nbsp; FS = Finish→Start &nbsp; SS = Start→Start &nbsp; FF = Finish→Finish &nbsp; SF = Start→Finish</div>
+        <div><span style="color:var(--accent2)">Lag:</span> &nbsp; +5 = wait 5 days after &nbsp; -3 = overlap 3 days &nbsp; default = 0</div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /content -->
+</div><!-- /app -->
+
+<!-- Modal -->
+<div id="modal-overlay" onclick="if(event.target===this)closeModal()">
+  <div id="modal">
+    <h3 id="modal-title">Add Task</h3>
+    <div id="modal-body"></div>
+    <div class="modal-footer" id="modal-footer"></div>
+  </div>
+</div>
+
+<!-- Tooltip -->
+<div id="tip"></div>
+<!-- Toast -->
+<div id="toast"></div>
+<script>
+// ═══════════════════════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════════════════════
+let S = {
+  settings: {
+    name:'EGAT 115/22 kV Substation', pm:'วิศวกร ผู้จัดการ',
+    start:'2025-01-06', dataDate:'2025-02-07', wdays:5,
+    phases:'Survey & Investigation,Earthworks,Foundation Works,Structural & Civil,Procurement,Equipment Installation,Cable Works,Protection & SCADA,Preliminary & Permit,Testing & Commissioning,Inspection & Approval'
+  },
+  tasks:[],
+  results:null,
+  gantt:{ topScale:'quarter', botScale:'month', colWidth:16, filter:'all', showSummary:true, viewStart:'', viewEnd:'' },
+  // Multi-baseline: up to 5 snapshots
+  baselines:[],   // [{name:'BL1',date:'2025-03-08',data:{taskId:{s:'2025-01-06',f:'2025-02-07'},...}}]
+  activeBL:0,     // which BL to show on Gantt (0-based index, -1=none)
+  undoStack:[]
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// UNDO SYSTEM (max 30 snapshots)
+// ═══════════════════════════════════════════════════════════════════════════════
+function pushUndo(label){
+  S.undoStack.push({
+    label: label||'change',
+    tasks: JSON.parse(JSON.stringify(S.tasks)),
+    baselines: JSON.parse(JSON.stringify(S.baselines)),
+    activeBL: S.activeBL
+  });
+  if(S.undoStack.length>30) S.undoStack.shift();
+  updateUndoBtn();
+}
+function undo(){
+  if(!S.undoStack.length){ toast('ไม่มีอะไรให้ Undo','error'); return; }
+  const snap = S.undoStack.pop();
+  S.tasks = snap.tasks;
+  S.baselines = snap.baselines;
+  S.activeBL = snap.activeBL;
+  renderTasks(); saveToStorage();
+  if(S.tasks.length) runCPM();
+  else { S.results=null; refreshAll(); }
+  toast(`Undo: ${snap.label}`);
+  updateUndoBtn(); updateBLSelector();
+}
+function updateUndoBtn(){
+  const btn=document.getElementById('btn-undo');
+  if(btn){
+    btn.disabled=!S.undoStack.length;
+    btn.style.opacity=S.undoStack.length?'1':'.4';
+    btn.title=S.undoStack.length?`Undo (${S.undoStack.length})`:'Nothing to undo';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// MULTI-BASELINE MANAGEMENT (up to 5)
+// ═══════════════════════════════════════════════════════════════════════════════
+function getActiveBLData(){
+  if(S.activeBL>=0 && S.activeBL<S.baselines.length) return S.baselines[S.activeBL].data;
+  return null;
+}
+function getBLForTask(taskId){
+  const blData=getActiveBLData();
+  return blData ? blData[taskId] : null;
+}
+
+function setBaseline(){
+  if(!S.tasks.length){ toast('ไม่มี Tasks','error'); return; }
+  // Run CPM fresh
+  const acts = S.tasks.map(t=>({...t, preds: parsePreds(t.predecessors)}));
+  const freshResults = runCPMEngine(acts, S.settings.start, S.settings.dataDate);
+  S.results = freshResults;
+
+  // Build snapshot: store BOTH offsets (for pixel position) AND dates (for display)
+  const snap = {};
+  freshResults.results.forEach(r=>{
+    snap[r.id] = { es: r.ES, ef: r.EF, s: r.curStart, f: r.curFinish };
+  });
+  Object.keys(freshResults.summaries).forEach(wbs=>{
+    const sm=freshResults.summaries[wbs];
+    snap['wbs_'+wbs] = { es: sm.ES, ef: sm.EF, s: sm.cur_start, f: sm.cur_finish };
+  });
+
+  if(S.baselines.length>=5){
+    const names = S.baselines.map((b,i)=>`${i+1}. ${b.name} (${b.date})`).join('\n');
+    const choice = prompt(`Baseline เต็ม 5 ชุดแล้ว กรุณาเลือกช่องที่จะแทนที่ (1-5):\n${names}`,'5');
+    if(!choice) return;
+    const idx = parseInt(choice)-1;
+    if(idx<0||idx>=5){ toast('เลือกไม่ถูกต้อง','error'); return; }
+    pushUndo('Replace Baseline '+(idx+1));
+    const blName = prompt('ชื่อ Baseline:', `BL${idx+1} — ${S.settings.dataDate}`) || `BL${idx+1}`;
+    S.baselines[idx] = { name:blName, date:S.settings.dataDate, projStart:S.settings.start, data:snap };
+    S.activeBL = idx;
+  } else {
+    pushUndo('Set Baseline '+(S.baselines.length+1));
+    const num = S.baselines.length+1;
+    const blName = prompt('ชื่อ Baseline:', `BL${num} — ${S.settings.dataDate}`) || `BL${num}`;
+    S.baselines.push({ name:blName, date:S.settings.dataDate, projStart:S.settings.start, data:snap });
+    S.activeBL = S.baselines.length-1;
+  }
+  writeBLToTasks();
+  saveToStorage(); refreshAll(); updateBLSelector();
+  toast(`✅ ${S.baselines[S.activeBL].name} ถูกเซ็ตเรียบร้อย`,'success');
+}
+
+function writeBLToTasks(){
+  const blData = getActiveBLData(); if(!blData) return;
+  S.tasks.forEach(t=>{
+    const b = blData[t.id] || blData['wbs_'+t.wbs];
+    if(b){ t.blStart=b.s; t.blFinish=b.f; }
+  });
+}
+
+function switchBaseline(idx){
+  if(idx<0||idx>=S.baselines.length) { S.activeBL=-1; }
+  else { S.activeBL=idx; }
+  writeBLToTasks();
+  saveToStorage(); refreshAll(); updateBLSelector();
+  if(idx>=0) toast(`Showing: ${S.baselines[idx].name}`);
+  else toast('Baseline hidden');
+}
+
+function deleteBaseline(idx){
+  if(idx<0||idx>=S.baselines.length) return;
+  if(!confirm(`ลบ "${S.baselines[idx].name}" ?`)) return;
+  pushUndo('Delete Baseline');
+  S.baselines.splice(idx,1);
+  if(S.activeBL>=S.baselines.length) S.activeBL=S.baselines.length-1;
+  writeBLToTasks();
+  saveToStorage(); refreshAll(); updateBLSelector();
+  toast('Baseline deleted');
+}
+
+function updateBLSelector(){
+  const sel=document.getElementById('bl-selector');
+  if(!sel) return;
+  let html='<option value="-1">— None —</option>';
+  S.baselines.forEach((b,i)=>{
+    html+=`<option value="${i}"${i===S.activeBL?' selected':''}>${b.name}</option>`;
+  });
+  sel.innerHTML=html;
+  sel.value=String(S.activeBL);
+  // Update delete button
+  const delBtn=document.getElementById('btn-del-bl');
+  if(delBtn) delBtn.style.display=S.baselines.length?'':'none';
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// DATE UTILS  — รองรับ 5 / 6 / 7 วันต่อสัปดาห์
+// ═══════════════════════════════════════════════════════════════════════════════
+function getWdays(){ return parseInt(S.settings.wdays)||5; }
+
+function isWD(d){
+  const wd = getWdays();
+  if(wd===7) return true;                        // 7 วัน: ทุกวัน
+  if(wd===6) return d.getDay()>=1&&d.getDay()<=6; // 6 วัน: จ–ส
+  return d.getDay()>=1&&d.getDay()<=5;            // 5 วัน: จ–ศ
+}
+
+function addWD(base, n){
+  if(!base) return base;
+  const d = new Date(base); let added=0; const step=n>=0?1:-1; const abs=Math.abs(n);
+  while(added<abs){ d.setDate(d.getDate()+step); if(isWD(d))added++ }
+  return d;
+}
+
+function diffWD(d1, d2){
+  if(!d1||!d2) return 0;
+  let a=new Date(d1), b=new Date(d2), count=0, step=b>=a?1:-1;
+  while(a.toDateString()!==b.toDateString()){
+    a.setDate(a.getDate()+step); if(isWD(a)) count+=step;
+  }
+  return count;
+}
+
+function pd(s){ return s?new Date(s+'T00:00:00'):null }
+function ds(d){ return d?d.toISOString().split('T')[0]:null }
+function df(d){ return d?d.toLocaleDateString('en',{day:'2-digit',month:'short',year:'2-digit'}):'' }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PREDECESSOR PARSER
+// ═══════════════════════════════════════════════════════════════════════════════
+function parsePreds(raw){
+  if(!raw||!raw.trim()||['—','None','nan'].includes(raw.trim())) return [];
+  const result=[];
+  for(const seg of raw.split('|')){
+    const s=seg.trim(); if(!s) continue;
+    const m=s.match(/^(\d+)(FS|SS|FF|SF)?([+-]\d+)?$/i);
+    if(m) result.push({ id:parseInt(m[1]), rel:(m[2]||'FS').toUpperCase(), lag:m[3]?parseInt(m[3]):0 });
+  }
+  return result;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// CPM ENGINE  (FS/SS/FF/SF + lag)
+// ═══════════════════════════════════════════════════════════════════════════════
+function runCPMEngine(tasks, projStart, dataDate){
+  const projStartD = pd(projStart);
+  const dateDateD  = pd(dataDate);
+
+  // Build adjacency — only activity tasks (dur>0)
+  const acts = tasks.filter(t=>t.dur>0);
+  const byId = {};
+  acts.forEach(t=>{ byId[t.id]=t; t.ES=0;t.EF=0;t.LS=0;t.LF=0;t.TF=0;t.FF=0 });
+
+  // Topological sort (Kahn's algorithm)
+  const indeg = {}; const adj = {};
+  acts.forEach(t=>{ indeg[t.id]=0; adj[t.id]=[] });
+  acts.forEach(t=>{
+    for(const p of (t.preds||[])){
+      if(!byId[p.id]) continue;
+      adj[p.id].push(t.id);
+      indeg[t.id]=(indeg[t.id]||0)+1;
+    }
+  });
+  const queue=[]; const topo=[];
+  acts.forEach(t=>{ if((indeg[t.id]||0)===0) queue.push(t.id) });
+  while(queue.length){
+    const id=queue.shift(); topo.push(id);
+    for(const nid of (adj[id]||[])){
+      indeg[nid]--;
+      if(indeg[nid]===0) queue.push(nid);
+    }
+  }
+
+  // Forward pass — actual dates override CPM calculation
+  topo.forEach(id=>{
+    const t=byId[id];
+    const hasActS = t.actualStart ? true : false;
+    const hasActF = t.actualFinish ? true : false;
+    const actSoff = hasActS ? diffWD(projStartD, pd(t.actualStart)) : null;
+    const actFoff = hasActF ? diffWD(projStartD, pd(t.actualFinish)) : null;
+
+    if(hasActS && hasActF){
+      // Both actual dates: fully constrained
+      t.ES = actSoff;
+      t.EF = actFoff;
+    } else if(hasActS){
+      // Actual start: ES fixed, EF = ES + dur
+      t.ES = actSoff;
+      t.EF = t.ES + t.dur;
+    } else {
+      // Normal CPM forward pass
+      for(const p of (t.preds||[])){
+        const pred=byId[p.id]; if(!pred) continue;
+        const lag=p.lag||0;
+        switch(p.rel){
+          case 'FS': t.ES=Math.max(t.ES, pred.EF+lag); break;
+          case 'SS': t.ES=Math.max(t.ES, pred.ES+lag); break;
+          case 'FF': { const newEF=pred.EF+lag; if(newEF>t.ES+t.dur){t.ES=newEF-t.dur} break; }
+          case 'SF': { const newEF=pred.ES+lag; if(newEF>t.ES+t.dur){t.ES=newEF-t.dur} break; }
+        }
+      }
+      t.ES=Math.max(0,t.ES);
+      t.EF=t.ES+t.dur;
+    }
+  });
+
+  const projDur = Math.max(...acts.map(t=>t.EF));
+
+  // Backward pass
+  topo.forEach(t=>{ byId[t].LF=projDur });
+  [...topo].reverse().forEach(id=>{
+    const t=byId[id];
+    if(!(adj[id]||[]).length){ t.LF=projDur }
+    t.LS=t.LF-t.dur;
+    // propagate to predecessors
+    for(const p of (t.preds||[])){
+      const pred=byId[p.id]; if(!pred) continue;
+      const lag=p.lag||0;
+      switch(p.rel){
+        case 'FS': pred.LF=Math.min(pred.LF, t.LS-lag); break;
+        case 'SS': pred.LF=Math.min(pred.LF, t.LS-lag+pred.dur); break;
+        case 'FF': pred.LF=Math.min(pred.LF, t.LF-lag); break;
+        case 'SF': pred.LF=Math.min(pred.LF, t.LF-lag+pred.dur); break;
+      }
+    }
+  });
+  topo.forEach(id=>{ const t=byId[id]; t.LS=t.LF-t.dur; t.TF=t.LF-t.EF });
+
+  // Free float (simplified)
+  topo.forEach(id=>{
+    const t=byId[id]; let ff=t.TF;
+    for(const sid of (adj[id]||[])){
+      const s=byId[sid]; if(!s) continue;
+      ff=Math.min(ff, s.ES-t.EF);
+    }
+    t.FF=Math.max(0,ff);
+  });
+
+  // Build results
+  const todayOff = diffWD(projStartD, dateDateD);
+  const results=[];
+  acts.forEach(t=>{
+    const blStart = addWD(projStartD, t.ES);
+    const blFinish= addWD(projStartD, t.EF);
+    const lfDate  = addWD(projStartD, t.LF);
+
+    let status='Not Started';
+    let actS = t.actualStart ? pd(t.actualStart) : null;
+    let actF = t.actualFinish? pd(t.actualFinish): null;
+    if(t.pct===100) status='Complete';
+    else if(t.pct>0||actS) status='In Progress';
+    else if(actF) status='Complete';
+
+    const forecastDur = t.dur - Math.round(t.pct/100*t.dur);
+    let forecastFinish;
+    if(status==='Complete') forecastFinish=actF||blFinish;
+    else if(actS){
+      const elapsed = diffWD(actS, dateDateD);
+      const remainDays = Math.max(0, t.dur - elapsed);
+      forecastFinish = addWD(dateDateD, remainDays);
+    } else {
+      forecastFinish = blFinish;
+    }
+
+    const schedDelay = diffWD(blFinish, forecastFinish);
+    const startVar = actS ? diffWD(blStart, actS) : (t.ES <= todayOff ? diffWD(blStart, dateDateD) : 0);
+    const finishVar = actF ? diffWD(blFinish, actF) : (schedDelay > 0 ? schedDelay : 0);
+    const remDur = status==='Complete' ? 0 : Math.max(0, Math.round(t.dur*(1-t.pct/100)));
+
+    results.push({
+      ...t,
+      ES:t.ES, EF:t.EF, LS:t.LS, LF:t.LF, TF:t.TF, FF:t.FF,
+      critical: t.TF===0,
+      curStart: ds(blStart), curFinish: ds(blFinish),
+      blStart: ds(blStart), blFinish: ds(blFinish), lfDate: ds(lfDate),
+      forecastFinish: ds(forecastFinish),
+      schedDelay, startVar, finishVar, remDur, status,
+    });
+  });
+
+  // WBS summary rollup
+  const summaries = computeSummaries(results, projStartD);
+  return { results, summaries, projDur, projStartD, dateDateD, topo };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// WBS SUMMARY ROLLUP
+// ═══════════════════════════════════════════════════════════════════════════════
+function wbsLevel(w){
+  if(!w||['','None','nan'].includes(w.trim())) return 3;
+  return w.trim().split('.').length;
+}
+function wbsParent(w){
+  const parts=w.trim().rsplit ? w.trim().split('.') : w.trim().split('.');
+  return parts.length>1 ? parts.slice(0,-1).join('.') : null;
+}
+
+function computeSummaries(l3results, projStartD){
+  const sums={};
+  l3results.forEach(r=>{
+    const wbs=r.wbs||''; const parts=wbs.split('.');
+    const parents=[];
+    for(let i=1;i<parts.length;i++) parents.push(parts.slice(0,i).join('.'));
+    parents.forEach(pw=>{
+      if(!sums[pw]) sums[pw]={
+        bl_start:null,bl_finish:null,
+        cur_start:null,cur_finish:null,
+        ES:r.ES,EF:r.EF,
+        pctSum:0,pctCount:0,anyCrit:false,maxDelay:0,
+        statusCounts:{Complete:0,'In Progress':0,'Not Started':0},maxEF:0
+      };
+      const s=sums[pw];
+      const bs=pd(r.blStart), bf=pd(r.blFinish);
+      if(!s.bl_start||bs<pd(s.bl_start)) s.bl_start=r.blStart;
+      if(!s.bl_finish||bf>pd(s.bl_finish)) s.bl_finish=r.blFinish;
+      // Current schedule dates (always from ES/EF)
+      const cs=pd(r.curStart), cf=pd(r.curFinish);
+      if(!s.cur_start||cs<pd(s.cur_start)) s.cur_start=r.curStart;
+      if(!s.cur_finish||cf>pd(s.cur_finish)) s.cur_finish=r.curFinish;
+      s.ES=Math.min(s.ES,r.ES); s.EF=Math.max(s.EF,r.EF);
+      s.pctSum+=r.pct; s.pctCount++;
+      if(r.critical) s.anyCrit=true;
+      s.maxDelay=Math.max(s.maxDelay,r.schedDelay);
+      s.statusCounts[r.status]=(s.statusCounts[r.status]||0)+1;
+    });
+  });
+  Object.keys(sums).forEach(w=>{
+    const s=sums[w];
+    s.pct=s.pctCount?Math.round(s.pctSum/s.pctCount):0;
+    const sc=s.statusCounts;
+    if(sc.Complete===s.pctCount) s.status='Complete';
+    else if(sc['Not Started']===s.pctCount) s.status='Not Started';
+    else s.status='In Progress';
+  });
+  return sums;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// MAIN RUN CPM
+// ═══════════════════════════════════════════════════════════════════════════════
+function runCPM(){
+  if(!S.tasks.length){ toast('No tasks loaded','error'); return; }
+  const acts = S.tasks.map(t=>({
+    ...t,
+    preds: parsePreds(t.predecessors),
+  }));
+  S.results = runCPMEngine(acts, S.settings.start, S.settings.dataDate);
+  const rMap={};
+  S.results.results.forEach(r=>rMap[r.id]=r);
+  S.tasks.forEach(t=>{
+    if(rMap[t.id]){
+      t.TF=rMap[t.id].TF; t.status=rMap[t.id].status;
+    }
+  });
+  // Write active BL dates to tasks for backward compat
+  writeBLToTasks();
+  toast(`CPM calculated — ${S.results.projDur} working days`,'success');
+  refreshAll();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// UI HELPERS
+// ═══════════════════════════════════════════════════════════════════════════════
+function toast(msg, type='success'){
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.className='show '+(type||'');
+  clearTimeout(el._t); el._t=setTimeout(()=>el.className='',2800);
+}
+function switchTab(name){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  document.getElementById('panel-'+name).classList.add('active');
+  if(name==='gantt'){ syncScaleUI(); renderGantt(); }
+  if(name==='schedule') renderSchedule('all');
+  if(name==='delay') renderDelay();
+  if(name==='dashboard') renderDashboard();
+  if(name==='settings') renderPhaseManager();
+}
+function openModal(title,body,footer){ document.getElementById('modal-title').textContent=title; document.getElementById('modal-body').innerHTML=body; document.getElementById('modal-footer').innerHTML=footer; document.getElementById('modal-overlay').classList.add('open'); }
+function closeModal(){ document.getElementById('modal-overlay').classList.remove('open'); }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SETTINGS
+// ═══════════════════════════════════════════════════════════════════════════════
+// ── Phase Manager ────────────────────────────────────────────────────────────
+function getPhases(){ return S.settings.phases.split(',').map(p=>p.trim()).filter(Boolean); }
+
+function renderPhaseManager(){
+  const el=document.getElementById('phase-manager'); if(!el) return;
+  const phases=getPhases();
+  el.innerHTML=phases.map((p,i)=>`
+    <div id="pm-row-${i}" style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid var(--line)">
+      <span style="font-family:var(--mono);font-size:9px;color:var(--txt3);width:18px;text-align:right">${i+1}</span>
+      <div id="pm-label-${i}" style="flex:1;font-family:var(--mono);font-size:11px;color:var(--txt);cursor:pointer;padding:3px 6px;border-radius:3px"
+        onclick="startEditPhase(${i})">${p}</div>
+      <button class="btn" style="padding:2px 7px;font-size:9px" onclick="movePhase(${i},-1)" title="ขึ้น">↑</button>
+      <button class="btn" style="padding:2px 7px;font-size:9px" onclick="movePhase(${i},+1)" title="ลง">↓</button>
+      <button class="btn danger" style="padding:2px 7px;font-size:9px" onclick="deletePhase(${i})" title="ลบ">✕</button>
+    </div>`).join('');
+}
+
+function startEditPhase(i){
+  const phases=getPhases();
+  const lbl=document.getElementById('pm-label-'+i); if(!lbl) return;
+  lbl.outerHTML=`<input id="pm-edit-${i}" type="text" value="${phases[i]}" style="flex:1;font-size:11px"
+    onblur="commitEditPhase(${i})" onkeydown="if(event.key==='Enter')commitEditPhase(${i});if(event.key==='Escape')renderPhaseManager()">`;
+  setTimeout(()=>{const inp=document.getElementById('pm-edit-'+i);if(inp){inp.focus();inp.select();}},50);
+}
+function commitEditPhase(i){
+  const inp=document.getElementById('pm-edit-'+i); if(!inp) return;
+  const val=inp.value.trim(); if(!val){renderPhaseManager();return;}
+  const phases=getPhases(); phases[i]=val;
+  S.settings.phases=phases.join(','); renderPhaseManager(); saveToStorage();
+  toast('Phase updated');
+}
+function addPhase(){
+  const inp=document.getElementById('new-phase-input'); if(!inp) return;
+  const val=inp.value.trim(); if(!val){toast('กรอกชื่อ Phase','error');return;}
+  const phases=getPhases();
+  if(phases.includes(val)){toast('Phase นี้มีอยู่แล้ว','error');return;}
+  phases.push(val); S.settings.phases=phases.join(',');
+  inp.value=''; renderPhaseManager(); saveToStorage();
+  toast('Added: '+val,'success');
+}
+function deletePhase(i){
+  const phases=getPhases();
+  if(!confirm('ลบ Phase "'+phases[i]+'" ?')) return;
+  phases.splice(i,1); S.settings.phases=phases.join(',');
+  renderPhaseManager(); saveToStorage(); toast('Phase deleted');
+}
+function movePhase(i,dir){
+  const phases=getPhases(); const j=i+dir;
+  if(j<0||j>=phases.length) return;
+  [phases[i],phases[j]]=[phases[j],phases[i]];
+  S.settings.phases=phases.join(','); renderPhaseManager(); saveToStorage();
+}
+
+function saveSettings(){
+  S.settings.name    = document.getElementById('s-name').value;
+  S.settings.pm      = document.getElementById('s-pm').value;
+  S.settings.start   = document.getElementById('s-start').value;
+  S.settings.dataDate= document.getElementById('s-data').value;
+  S.settings.wdays   = parseInt(document.getElementById('s-wdays').value);
+  // phases managed live by phase manager — no need to read field
+  updateTopbar();
+  toast('Settings saved');
+  saveToStorage();
+}
+function updateTopbar(){
+  document.getElementById('topbar-proj').textContent = S.settings.name;
+  document.getElementById('topbar-date').textContent = 'Data Date: '+S.settings.dataDate;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// TASK CRUD
+// ═══════════════════════════════════════════════════════════════════════════════
+function openAddTask(){
+  const phases = getPhases();
+  const phaseOpts = phases.map(p=>`<option>${p}</option>`).join('');
+  openModal('Add Task', `
+    <div class="form-grid cols-3">
+      <div class="form-row"><label>Activity ID</label><input id="f-id" type="number" placeholder="e.g. 1010"></div>
+      <div class="form-row"><label>WBS</label><input id="f-wbs" type="text" placeholder="e.g. 1.2.3"></div>
+      <div class="form-row"><label>Duration (days, 0=Summary)</label><input id="f-dur" type="number" value="0" min="0"></div>
+    </div>
+    <div class="form-grid cols-1">
+      <div class="form-row"><label>Activity Name</label><input id="f-name" type="text" placeholder="Activity name"></div>
+    </div>
+    <div class="form-grid cols-2">
+      <div class="form-row"><label>Phase / Discipline</label><select id="f-phase" onchange="autoFillWbsId()" ><option value=""></option>${phaseOpts}</select></div>
+      <div class="form-row"><label>Resource</label><input id="f-res" type="text" placeholder="Team / Person"></div>
+    </div>
+    <div class="form-grid cols-1">
+      <div class="form-row"><label>Predecessors (e.g. 1010FS|2020SS+5)</label><input id="f-pred" type="text" placeholder="ID+Type+Lag separated by |"></div>
+    </div>
+    <div class="form-grid cols-3">
+      <div class="form-row"><label>Actual Start</label><input id="f-as" type="date"></div>
+      <div class="form-row"><label>Actual Finish</label><input id="f-af" type="date"></div>
+      <div class="form-row"><label>% Complete (0-100)</label><input id="f-pct" type="number" value="0" min="0" max="100"></div>
+    </div>
+  `, `<button class="btn" onclick="closeModal()">Cancel</button><button class="btn primary" onclick="saveTask(-1)">Add Task</button>`);
+}
+
+// Auto-fill WBS and ID when phase is selected in Add Task modal
+function autoFillWbsId(){
+  const phaseEl=document.getElementById('f-phase');
+  const idEl=document.getElementById('f-id');
+  const wbsEl=document.getElementById('f-wbs');
+  if(!phaseEl||!idEl||!wbsEl) return;
+  const phase=phaseEl.value; if(!phase) return;
+
+  const phases=getPhases();
+  const phaseIdx=phases.indexOf(phase); // 0-based
+  const p1=phaseIdx+1; // WBS level-1 number
+
+  // Find all tasks in this WBS level-1 group
+  const inGroup=S.tasks.filter(t=>{
+    const parts=(t.wbs||'').split('.');
+    return parseInt(parts[0])===p1;
+  });
+
+  // Determine next sub-group (level 2) number
+  const l2nums=[...new Set(inGroup.map(t=>{
+    const parts=(t.wbs||'').split('.');
+    return parts.length>=2?parseInt(parts[1]):0;
+  }).filter(n=>n>0))];
+  const nextL2 = l2nums.length ? Math.max(...l2nums) : 0; // use existing last sub-group
+
+  // Determine next activity (level 3) number within last sub-group
+  const inL2 = inGroup.filter(t=>{
+    const parts=(t.wbs||'').split('.');
+    return parts.length>=3&&parseInt(parts[1])===(nextL2||1);
+  });
+  const nextL3 = inL2.length+1;
+
+  const wbs = nextL2>0
+    ? `${p1}.${nextL2}.${nextL3}`
+    : `${p1}.1.1`;
+
+  wbsEl.value=wbs;
+
+  // Suggest ID: based on existing IDs in this phase group
+  const existingIds=S.tasks.filter(t=>{
+    const parts=(t.wbs||'').split('.');
+    return parseInt(parts[0])===p1&&t.dur>0;
+  }).map(t=>t.id);
+  let suggestId;
+  if(existingIds.length){
+    const maxId=Math.max(...existingIds);
+    suggestId=maxId+10;
+  } else {
+    suggestId=p1*1000+10;
+  }
+  // Make sure not duplicate
+  while(S.tasks.find(t=>t.id===suggestId)) suggestId+=10;
+  idEl.value=suggestId;
+}
+
+function editTask(idx){
+  const t=S.tasks[idx];
+  const phases=getPhases(); const phaseOpts=phases.map(p=>`<option${p===t.phase?' selected':''}>${p}</option>`).join('');
+  openModal('Edit Task', `
+    <div class="form-grid cols-3">
+      <div class="form-row"><label>Activity ID</label><input id="f-id" type="number" value="${t.id}"></div>
+      <div class="form-row"><label>WBS</label><input id="f-wbs" type="text" value="${t.wbs||''}"></div>
+      <div class="form-row"><label>Duration</label><input id="f-dur" type="number" value="${t.dur||0}" min="0"></div>
+    </div>
+    <div class="form-grid cols-1">
+      <div class="form-row"><label>Name</label><input id="f-name" type="text" value="${t.name||''}"></div>
+    </div>
+    <div class="form-grid cols-2">
+      <div class="form-row"><label>Phase</label><select id="f-phase"><option value=""></option>${phaseOpts}</select></div>
+      <div class="form-row"><label>Resource</label><input id="f-res" type="text" value="${t.resource||''}"></div>
+    </div>
+    <div class="form-grid cols-1">
+      <div class="form-row"><label>Predecessors</label><input id="f-pred" type="text" value="${t.predecessors||''}"></div>
+    </div>
+    <div class="form-grid cols-3">
+      <div class="form-row"><label>Actual Start</label><input id="f-as" type="date" value="${t.actualStart||''}"></div>
+      <div class="form-row"><label>Actual Finish</label><input id="f-af" type="date" value="${t.actualFinish||''}"></div>
+      <div class="form-row"><label>% Complete</label><input id="f-pct" type="number" value="${t.pct||0}" min="0" max="100"></div>
+    </div>
+  `, `<button class="btn danger" onclick="deleteTask(${idx})">Delete</button><button class="btn" onclick="closeModal()">Cancel</button><button class="btn primary" onclick="saveTask(${idx})">Save</button>`);
+}
+
+// ── WBS comparison for sorting ───────────────────────────────────────────────
+function wbsKey(w){
+  if(!w) return [9999];
+  return w.split('.').map(p=>{ const n=parseInt(p); return isNaN(n)?p:n; });
+}
+function wbsCmp(a,b){
+  const ka=wbsKey(a), kb=wbsKey(b);
+  for(let i=0;i<Math.max(ka.length,kb.length);i++){
+    const ai=ka[i]??-1, bi=kb[i]??-1;
+    if(ai<bi) return -1; if(ai>bi) return 1;
+  }
+  return 0;
+}
+function wbsParentStr(w){ const p=w?w.split('.'):[]; return p.length>1?p.slice(0,-1).join('.'):''; }
+
+// ── Insert task at correct WBS position ──────────────────────────────────────
+function insertTaskSorted(t){
+  // Find insert position: after last task whose wbs <= t.wbs (siblings first, then end of block)
+  const tw = t.wbs||'';
+  let insertAt = S.tasks.length; // default: append
+
+  // Find the last index whose wbs < tw, then insert after it
+  // But also: all children of the same parent should stay together
+  for(let i=0;i<S.tasks.length;i++){
+    if(wbsCmp(S.tasks[i].wbs||'', tw) <= 0) insertAt = i+1;
+  }
+  S.tasks.splice(insertAt, 0, t);
+}
+
+function saveTask(idx){
+  pushUndo(idx===-1?'Add Task':'Edit Task');
+  const id=parseInt(document.getElementById('f-id').value);
+  if(!id){ toast('Activity ID required','error'); return; }
+  const t={
+    id, wbs:document.getElementById('f-wbs').value.trim(),
+    name:document.getElementById('f-name').value.trim(),
+    dur:parseInt(document.getElementById('f-dur').value)||0,
+    phase:document.getElementById('f-phase').value,
+    resource:document.getElementById('f-res').value.trim(),
+    predecessors:document.getElementById('f-pred').value.trim(),
+    actualStart:document.getElementById('f-as').value||null,
+    actualFinish:document.getElementById('f-af').value||null,
+    pct:Math.max(0,Math.min(100,parseInt(document.getElementById('f-pct').value)||0)),
+    blStart: idx>=0 ? S.tasks[idx].blStart : null,
+    blFinish: idx>=0 ? S.tasks[idx].blFinish : null,
+    TF:null, status:'Not Started'
+  };
+  if(idx===-1){
+    if(S.tasks.find(x=>x.id===id)){ toast('Duplicate ID','error'); return; }
+    insertTaskSorted(t);
+  } else {
+    S.tasks[idx]=t;
+  }
+  closeModal(); renderTasks(); saveToStorage();
+  toast(idx===-1?`Task added at WBS ${t.wbs}`:'Task updated');
+}
+
+function deleteTask(idx){
+  const t=S.tasks[idx];
+  if(!confirm(`ลบงาน "${t.name}" (ID: ${t.id}) ?`)) return;
+  pushUndo('Delete Task');
+  S.tasks.splice(idx,1); closeModal(); renderTasks(); saveToStorage();
+  toast(`Deleted: ${t.name}`);
+}
+
+function clearAll(){
+  if(!confirm('Clear all tasks?')) return;
+  pushUndo('Clear All');
+  S.tasks=[]; S.results=null; S.baselines=[]; S.activeBL=-1;
+  renderTasks(); updateBLSelector(); toast('Cleared');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// RENDER TASKS TABLE
+// ═══════════════════════════════════════════════════════════════════════════════
+function renderTasks(){
+  const tbody=document.getElementById('task-tbody');
+  document.getElementById('task-count').textContent=`${S.tasks.filter(t=>t.dur>0).length} activities, ${S.tasks.filter(t=>t.dur===0).length} summary`;
+  tbody.innerHTML=S.tasks.map((t,i)=>{
+    const lv=wbsLevel(t.wbs||'');
+    const isCrit=t.TF===0&&t.dur>0;
+    const cls=(lv===1?'tr-l1':lv===2?'tr-l2':'')+(isCrit?' tr-crit':'');
+    const indent='&nbsp;'.repeat((lv-1)*4);
+    const statusBadge=t.status?statusBadgeHTML(t.status):'';
+    const tfDisp=t.TF!=null&&t.dur>0?`<span class="badge ${t.TF===0?'red':t.TF<=5?'amber':'grey'}">${t.TF}d</span>`:'—';
+    return `<tr class="${cls}">
+      <td><span class="badge blue">${t.id}</span></td>
+      <td><span style="font-family:var(--mono);font-size:10px">${t.wbs||''}</span></td>
+      <td class="name-col">${indent}${lv<3?'<b>':' '}${t.name||''}${lv<3?'</b>':''}</td>
+      <td>${t.phase||''}</td>
+      <td style="text-align:center">${t.dur||0}</td>
+      <td style="color:var(--accent2)">${t.predecessors||''}</td>
+      <td>${t.actualStart||''}</td>
+      <td>${t.actualFinish||''}</td>
+      <td style="text-align:center">${t.dur>0?`<span class="${t.pct===100?'badge green':t.pct>0?'badge amber':'badge grey'}">${t.pct}%</span>`:'—'}</td>
+      <td style="color:var(--txt3);font-size:10px">${t.blStart||'—'}</td>
+      <td style="color:var(--txt3);font-size:10px">${t.blFinish||'—'}</td>
+      <td>${tfDisp}</td>
+      <td>${statusBadge}</td>
+      <td><button class="btn" style="padding:3px 8px;font-size:10px" onclick="editTask(${i})">Edit</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function statusBadgeHTML(s){
+  const map={'Complete':'green','In Progress':'blue','Not Started':'grey','Started':'amber'};
+  return `<span class="badge ${map[s]||'grey'}">${s}</span>`;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════════════════════════════════════════════════
+function renderDashboard(){
+  if(!S.results) return;
+  const {results, summaries, projDur, projStartD, dateDateD} = S.results;
+  const projFinish = addWD(projStartD, projDur);
+  const total=results.length;
+  const done=results.filter(r=>r.pct===100).length;
+  const prog=results.filter(r=>r.pct>0&&r.pct<100).length;
+  const delayed=results.filter(r=>r.schedDelay>0).length;
+  const crit=results.filter(r=>r.critical).length;
+  const avgPct=Math.round(results.reduce((s,r)=>s+r.pct,0)/total);
+  const daysIn=diffWD(projStartD, dateDateD);
+  const plannedPct=Math.round(Math.min(100,daysIn/projDur*100));
+  const spi=(avgPct/plannedPct).toFixed(2);
+  const svar=avgPct-plannedPct;
+
+  document.getElementById('kpi-total').textContent=total;
+  document.getElementById('kpi-done').textContent=done;
+  document.getElementById('kpi-prog').textContent=prog;
+  document.getElementById('kpi-delay').textContent=delayed;
+  document.getElementById('kpi-crit').textContent=crit;
+  document.getElementById('kpi-finish').textContent=df(projFinish);
+
+  document.getElementById('planned-pct').textContent=plannedPct+'%';
+  document.getElementById('planned-pct').style.color=avgPct>=plannedPct?'var(--green)':'var(--red)';
+  document.getElementById('actual-pct').textContent=avgPct+'%';
+  document.getElementById('actual-pct').style.color=avgPct>=plannedPct?'var(--green)':'var(--amber)';
+  document.getElementById('plan-bar').style.cssText=`width:${plannedPct}%;background:var(--line2)`;
+  document.getElementById('actual-bar').style.cssText=`width:${avgPct}%;background:${avgPct>=plannedPct?'var(--green)':'var(--amber)'}`;
+  document.getElementById('spi-val').textContent=spi;
+  document.getElementById('spi-val').style.color=spi>=1?'var(--green)':'var(--red)';
+  document.getElementById('svar-val').innerHTML=`<span style="color:${svar>=0?'var(--green)':'var(--red)'}">${svar>=0?'+':''}${svar}%</span>`;
+
+  document.getElementById('info-proj').textContent=S.settings.name;
+  document.getElementById('info-pm').textContent=S.settings.pm;
+  document.getElementById('info-start').textContent=S.settings.start;
+  document.getElementById('info-finish').textContent=ds(projFinish);
+  document.getElementById('info-dur').textContent=projDur+' wd';
+
+  // Critical path
+  const cpIds=S.results.topo.filter(id=>results.find(r=>r.id===id&&r.critical));
+  const cpNames=cpIds.map(id=>{ const r=results.find(r=>r.id===id); return r?`<span style="color:var(--red)">${r.id}</span>`:'' });
+  document.getElementById('cp-text').innerHTML=cpNames.join(' <span style="color:var(--txt3)">→</span> ');
+
+  // Phase breakdown
+  const l1Tasks={};
+  results.forEach(r=>{
+    const l1=r.wbs?r.wbs.split('.')[0]:'?';
+    if(!l1Tasks[l1]) l1Tasks[l1]={tasks:[],name:''};
+    l1Tasks[l1].tasks.push(r);
+  });
+  // Get L1 names from summary tasks
+  S.tasks.filter(t=>wbsLevel(t.wbs||'')==1).forEach(t=>{
+    const k=t.wbs; if(l1Tasks[k]) l1Tasks[k].name=t.name;
+  });
+
+  const phHtml=Object.entries(l1Tasks).map(([k,v])=>{
+    const tasks=v.tasks; const s=summaries[k]||{};
+    const pct=tasks.reduce((a,t)=>a+t.pct,0)/tasks.length;
+    const dl=tasks.filter(t=>t.schedDelay>0).length;
+    return `<div class="phase-row">
+      <div class="phase-name"><span style="color:var(--txt3);font-family:var(--mono);font-size:9px">${k} &nbsp;</span>${v.name||tasks[0]?.phase||k}</div>
+      <div><div class="progress-track"><div class="progress-fill" style="width:${pct}%;background:${pct===100?'var(--green)':pct>0?'var(--accent)':'var(--line2)'}"></div></div></div>
+      <div style="font-family:var(--mono);font-size:11px;text-align:center">${Math.round(pct)}%</div>
+      <div style="text-align:center">${dl?`<span class="badge red">+${dl}</span>`:'<span class="badge green">✓</span>'}</div>
+      <div style="font-family:var(--mono);font-size:10px;color:var(--txt3)">${s.bl_finish||'—'}</div>
+    </div>`;
+  }).join('');
+  document.getElementById('phase-breakdown').innerHTML=`
+    <div style="display:grid;grid-template-columns:180px 1fr 80px 60px 60px;gap:12px;padding:0 0 8px 0;margin-bottom:6px;border-bottom:1px solid var(--line)">
+      <span style="font-family:var(--mono);font-size:9px;color:var(--txt3);text-transform:uppercase">Phase</span>
+      <span></span>
+      <span style="font-family:var(--mono);font-size:9px;color:var(--txt3);text-align:center">Avg%</span>
+      <span style="font-family:var(--mono);font-size:9px;color:var(--txt3);text-align:center">Delayed</span>
+      <span style="font-family:var(--mono);font-size:9px;color:var(--txt3)">BL Finish</span>
+    </div>${phHtml}`;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SCHEDULE TABLE
+// ═══════════════════════════════════════════════════════════════════════════════
+function renderSchedule(filter){
+  if(!S.results){ document.getElementById('sched-tbody').innerHTML='<tr><td colspan="20" style="text-align:center;padding:24px;color:var(--txt3)">Run CPM first</td></tr>'; return; }
+  const {results, summaries} = S.results;
+  const rMap={}; results.forEach(r=>rMap[r.id]=r);
+
+  let rows=S.tasks;
+  if(filter==='critical') rows=rows.filter(t=>rMap[t.id]&&rMap[t.id].critical);
+  if(filter==='delayed')  rows=rows.filter(t=>rMap[t.id]&&rMap[t.id].schedDelay>0);
+
+  const tbody=document.getElementById('sched-tbody');
+  const {projStartD}=S.results;
+  tbody.innerHTML=rows.map(t=>{
+    const lv=wbsLevel(t.wbs||'');
+    const r=rMap[t.id];
+    const s=summaries[t.wbs];
+    const isCrit=r&&r.critical;
+    const cls=(lv===1?'tr-l1':lv===2?'tr-l2':'')+(isCrit?' tr-crit':'');
+    const indent='&nbsp;'.repeat((lv-1)*4);
+    const namePrefix=lv===1?'▌ ':lv===2?'▸ ':'';
+    const blS=r?r.blStart:(s?s.bl_start:'—');
+    const blF=r?r.blFinish:(s?s.bl_finish:'—');
+    // Convert ES/EF/LS/LF offsets to dates
+    const esDate=r?ds(addWD(projStartD,r.ES)):'—';
+    const efDate=r?ds(addWD(projStartD,r.EF)):'—';
+    const lsDate=r?ds(addWD(projStartD,r.LS)):'—';
+    const lfDate=r?ds(addWD(projStartD,r.LF)):'—';
+    const pctDisp=t.dur>0?(r?r.pct:s?s.pct:0):s?s.pct:0;
+    const sv=r&&r.startVar!==0?`<span style="color:${r.startVar>0?'var(--red)':'var(--green)'}">${r.startVar>0?'+':''}${r.startVar}</span>`:'0';
+    const fv=r&&r.finishVar!==0?`<span style="color:${r.finishVar>0?'var(--red)':'var(--green)'}">${r.finishVar>0?'+':''}${r.finishVar}</span>`:'0';
+    const tf=r?`<span class="badge ${r.TF===0?'red':r.TF<=5?'amber':'grey'}">${r.TF}</span>`:'—';
+    const ff=r?r.FF:'—';
+    return `<tr class="${cls}">
+      <td><span class="badge ${isCrit?'crit':'blue'}">${t.id}</span></td>
+      <td><span style="font-family:var(--mono);font-size:9px">${t.wbs||''}</span></td>
+      <td class="name-col">${indent}${namePrefix}${t.name||''}</td>
+      <td style="font-size:10px">${t.phase||''}</td>
+      <td style="text-align:center">${t.dur||0}</td>
+      <td style="text-align:center;color:var(--accent);font-size:10px">${esDate}</td>
+      <td style="text-align:center;color:var(--accent);font-size:10px">${efDate}</td>
+      <td style="text-align:center;color:var(--txt3);font-size:10px">${lsDate}</td>
+      <td style="text-align:center;color:var(--txt3);font-size:10px">${lfDate}</td>
+      <td style="font-size:10px">${blS||'—'}</td>
+      <td style="font-size:10px">${blF||'—'}</td>
+      <td>${tf}</td><td style="text-align:center">${ff}</td>
+      <td style="font-size:10px;color:var(--green)">${t.actualStart||'—'}</td>
+      <td style="font-size:10px;color:var(--green)">${t.actualFinish||'—'}</td>
+      <td style="text-align:center">${sv}</td><td style="text-align:center">${fv}</td>
+      <td style="text-align:center"><span class="badge ${pctDisp===100?'green':pctDisp>0?'amber':'grey'}">${pctDisp}%</span></td>
+      <td style="text-align:center">${isCrit?'<span class="badge crit">★ CP</span>':'—'}</td>
+      <td>${r?statusBadgeHTML(r.status):s?statusBadgeHTML(s.status):'—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// DELAY ANALYSIS
+// ═══════════════════════════════════════════════════════════════════════════════
+function renderDelay(){
+  if(!S.results){ document.getElementById('delay-list').innerHTML='<p style="color:var(--txt3);font-family:var(--mono)">Run CPM first</p>'; return; }
+  const {results}=S.results;
+  const delayed=results.filter(r=>r.schedDelay>0);
+  const critDel=delayed.filter(r=>r.critical);
+  const maxDel=Math.max(...results.map(r=>r.schedDelay));
+
+  document.getElementById('delay-summary').innerHTML=`
+    <div class="card-grid cols-4">
+      <div class="kpi-card red"><div class="kpi-label">Delayed Activities</div><div class="kpi-value">${delayed.length}</div></div>
+      <div class="kpi-card red"><div class="kpi-label">Critical & Delayed</div><div class="kpi-value">${critDel.length}</div></div>
+      <div class="kpi-card amber"><div class="kpi-label">Max Delay</div><div class="kpi-value">+${maxDel}d</div></div>
+      <div class="kpi-card ${maxDel>0?'red':'green'}"><div class="kpi-label">Project Status</div><div class="kpi-value" style="font-size:14px">${maxDel>5?'🔴 Delayed':maxDel>0?'🟡 At Risk':'🟢 On Track'}</div></div>
+    </div>`;
+
+  const sorted=[...results].sort((a,b)=>b.schedDelay-a.schedDelay||b.critical-a.critical);
+  document.getElementById('delay-list').innerHTML=sorted.filter(r=>r.schedDelay>0||r.status!=='Not Started').map(r=>{
+    const rag=r.schedDelay>5?'rag-red':r.schedDelay>0?'rag-amber':'rag-green';
+    const ragLabel=r.schedDelay>5?`🔴 +${r.schedDelay}d`:r.schedDelay>0?`🟡 +${r.schedDelay}d`:'🟢 On Track';
+    return `<div class="delay-card ${rag}">
+      <div class="delay-card-header">
+        <span class="badge ${r.critical?'crit':'blue'}">${r.id}</span>
+        <span style="font-size:12px;font-weight:500;color:var(--txt)">${r.name}</span>
+        <span style="flex:1"></span>
+        ${r.critical?'<span class="badge crit">★ Critical</span>':''}
+        <span class="badge ${r.schedDelay>5?'red':r.schedDelay>0?'amber':'green'}">${ragLabel}</span>
+      </div>
+      <div class="delay-card-body">
+        <div class="dl"><span>BL Start</span><span>${r.blStart||'—'}</span></div>
+        <div class="dl"><span>BL Finish</span><span>${r.blFinish||'—'}</span></div>
+        <div class="dl"><span>Forecast Finish</span><span style="color:${r.schedDelay>0?'var(--amber)':'var(--txt2)'}">${r.forecastFinish||'—'}</span></div>
+        <div class="dl"><span>Float (TF)</span><span>${r.TF}d</span></div>
+        <div class="dl"><span>Act. Start</span><span style="color:var(--green)">${r.actualStart||'—'}</span></div>
+        <div class="dl"><span>Act. Finish</span><span style="color:var(--green)">${r.actualFinish||'—'}</span></div>
+        <div class="dl"><span>% Complete</span><span>${r.pct}%</span></div>
+        <div class="dl"><span>Status</span><span>${r.status}</span></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// GANTT CHART
+// ═══════════════════════════════════════════════════════════════════════════════
+let GANTT_DATA=null;
+
+function renderGantt(){
+  if(!S.results){ document.getElementById('gantt-rows-left').innerHTML='<div style="padding:24px;font-family:var(--mono);font-size:11px;color:var(--txt3)">Run CPM first</div>'; return; }
+  const {results,summaries,projDur,projStartD,dateDateD}=S.results;
+  const CW=S.gantt.colWidth||16; // px per working day
+  const todayOff=diffWD(projStartD,dateDateD);
+
+  // ── Auto-populate view date inputs if empty ────────────────────────────────
+  const vsEl=document.getElementById('g-view-start');
+  const veEl=document.getElementById('g-view-end');
+  if(vsEl && !S.gantt.viewStart) vsEl.value = S.settings.start || '';
+  if(veEl && !S.gantt.viewEnd){
+    const autoEndDate = addWD(projStartD, Math.min(projDur+20, 400));
+    veEl.value = ds(autoEndDate) || '';
+  }
+
+  const vStartDate = S.gantt.viewStart ? pd(S.gantt.viewStart) : projStartD;
+  const vEndDate   = S.gantt.viewEnd   ? pd(S.gantt.viewEnd)   : null;
+  const viewOff0   = diffWD(projStartD, vStartDate);                          // first visible working day offset
+  const autoEnd    = Math.min(projDur+20, 400);
+  const viewOff1   = vEndDate ? diffWD(projStartD, vEndDate) : autoEnd;       // last visible working day offset
+  const MAX        = Math.max(10, viewOff1 - viewOff0);                        // number of working days to show
+
+  const rMap={}; results.forEach(r=>rMap[r.id]=r);
+
+  // Build day→date  (only for the view window)
+  const dayDates=[];
+  for(let i=0;i<MAX;i++) dayDates.push(addWD(vStartDate,i));
+
+  // Build month groups
+  const months=[]; let curMonth=null;
+  dayDates.forEach((d,i)=>{
+    const k=d.getFullYear()*100+(d.getMonth()+1);
+    if(!curMonth||curMonth.k!==k){
+      curMonth={k,label:d.toLocaleDateString('en',{month:'short',year:'numeric'}),
+        shortLabel:d.toLocaleDateString('en',{month:'short',year:'2-digit'}),
+        start:i,count:0,month:d.getMonth(),year:d.getFullYear()};
+      months.push(curMonth);
+    }
+    curMonth.count++;
+  });
+
+  // ── Scale grouping engine ──────────────────────────────────────────────────
+  function buildScaleGroups(scale){
+    const groups=[]; let cur=null;
+    dayDates.forEach((d,i)=>{
+      let k,label;
+      const yr=d.getFullYear(), mo=d.getMonth(), dy=d.getDate(), dow=d.getDay();
+      switch(scale){
+        case 'year':
+          k=yr; label=String(yr); break;
+        case 'half': {
+          const h=mo<6?1:2; k=yr*10+h; label=`H${h}/${yr}`; break;
+        }
+        case 'quarter': {
+          const q=Math.floor(mo/3)+1; k=yr*10+q; label=`Q${q}/${yr}`; break;
+        }
+        case 'month':
+          k=yr*100+(mo+1); label=d.toLocaleDateString('en',{month:'short',year:'2-digit'}); break;
+        case 'week': {
+          // ISO week: group by Monday
+          const mon=new Date(d); mon.setDate(dy-(dow===0?6:dow-1));
+          k=mon.getFullYear()*1000+Math.floor((mon-new Date(mon.getFullYear(),0,1))/86400000);
+          const monEnd=new Date(mon); monEnd.setDate(mon.getDate()+6);
+          label=`${mon.getDate()}/${mon.getMonth()+1}–${monEnd.getDate()}/${monEnd.getMonth()+1}`;
+          break;
+        }
+        case 'day':
+          k=yr*10000+(mo+1)*100+dy;
+          label=dow===0?'Su':dow===6?'Sa':String(dy);
+          break;
+        default: k=yr*100+(mo+1); label=d.toLocaleDateString('en',{month:'short'}); break;
+      }
+      if(!cur||cur.k!==k){
+        cur={k,label,start:i,count:0};
+        groups.push(cur);
+      }
+      cur.count++;
+    });
+    return groups;
+  }
+
+  const topGroups = buildScaleGroups(S.gantt.topScale);
+  const botGroups = buildScaleGroups(S.gantt.botScale);
+
+  // Also build quarters for zone background
+  const quarters = buildScaleGroups('quarter');
+
+  // Time header
+  const totalW=MAX*CW;
+  const topFontSize = S.gantt.topScale==='day'?'8px':'10px';
+  const botFontSize = S.gantt.botScale==='day'?'8px':'9px';
+
+  let topRow='', botRow='';
+  topGroups.forEach(g=>{
+    const w=g.count*CW;
+    topRow+=`<div style="width:${w}px;min-width:${w}px;height:24px;display:inline-flex;align-items:center;justify-content:center;border-right:1px solid rgba(255,255,255,.3);font-family:var(--mono);font-size:${topFontSize};font-weight:700;color:#fff;flex-shrink:0;letter-spacing:.4px;background:rgba(0,0,0,.12);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 2px">${w>20?g.label:''}</div>`;
+  });
+  botGroups.forEach(g=>{
+    const w=g.count*CW;
+    botRow+=`<div style="width:${w}px;min-width:${w}px;height:26px;display:inline-flex;align-items:center;justify-content:center;border-right:1px solid rgba(255,255,255,.2);font-family:var(--mono);font-size:${botFontSize};font-weight:500;color:rgba(255,255,255,.9);flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 2px">${w>14?g.label:''}</div>`;
+  });
+  document.getElementById('gantt-time-header').innerHTML=`
+    <div style="display:flex;white-space:nowrap;border-bottom:1px solid rgba(255,255,255,.2)">${topRow}</div>
+    <div style="display:flex;white-space:nowrap">${botRow}</div>`;
+
+  // Rows
+  let leftHtml='', rightHtml='';
+  let altIdx=0;
+  const filter=S.gantt.filter;
+
+  S.tasks.forEach(t=>{
+    const lv=wbsLevel(t.wbs||'');
+    const r=rMap[t.id];
+    const s=summaries[t.wbs];
+    const isSum=t.dur===0;
+    if(!S.gantt.showSummary&&isSum) return;
+    if(filter==='critical'&&(!r||!r.critical)) return;
+    if(filter==='delayed'&&(!r||r.schedDelay<=0)) return;
+    if(filter==='inprog'&&(!r||r.status!=='In Progress')) return;
+
+    const isAlt=!isSum&&(altIdx++%2===1);
+    const isCrit=r&&r.critical;
+    const rowBg=lv===1?'#E8F1FA':lv===2?'#F0F6FC':isAlt?'#F8FAFB':'#FFFFFF';
+    const nameFg=lv===1?'var(--txt)':lv===2?'var(--txt)':isCrit?'var(--red)':'var(--txt2)';
+    const indent=lv===1?'▌ ':lv===2?'  ▸ ':'      ';
+    const pct=r?r.pct:(s?s.pct:0);
+    const ROW_H = 36;
+    const taskIdx = S.tasks.indexOf(t);
+
+    // Editable values
+    const actSdisp = t.actualStart ? t.actualStart.slice(5) : '—';
+    const actFdisp = t.actualFinish ? t.actualFinish.slice(5) : '—';
+    const actScolor = t.actualStart ? 'var(--green)' : 'var(--txt3)';
+    const actFcolor = t.actualFinish ? 'var(--green)' : 'var(--txt3)';
+    const pctColor = pct===100?'var(--green)':pct>0?'var(--gold)':'var(--txt3)';
+
+    // Left panel row with inline-editable cells
+    const predDisp = t.predecessors ? t.predecessors.split('|').join(' ') : '';
+    leftHtml+=`<div class="g-info-row${lv===1?' g-lv1':lv===2?' g-lv2':''}${isCrit?' g-crit':''}" style="background:${rowBg};height:${ROW_H}px">
+      <div class="g-cell id" style="color:${isCrit?'var(--red)':'var(--txt3)'}">${t.id}</div>
+      <div class="g-cell name" style="font-size:${lv===1?12:lv===2?11:10}px;font-weight:${lv<3?600:400};color:${nameFg}">${indent}${t.name||''}</div>
+      <div class="g-cell" style="font-size:9px;color:var(--accent2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border-right:1px solid var(--line);padding:4px 4px" title="${predDisp}">${predDisp}</div>
+      <div class="g-cell edit date" style="color:${actScolor}" onclick="ganttEditDate(${taskIdx},'actualStart',this)" title="Click to edit">${actSdisp}</div>
+      <div class="g-cell edit date" style="color:${actFcolor}" onclick="ganttEditDate(${taskIdx},'actualFinish',this)" title="Click to edit">${actFdisp}</div>
+      <div class="g-cell edit pct" style="color:${pctColor}" onclick="ganttEditPct(${taskIdx},this)" title="Click to edit">${isSum?'':pct+'%'}</div>
+    </div>`;
+
+    // Right: chart row
+    const es=r?r.ES:(s?s.ES:0);
+    const ef=r?r.EF:(s?s.EF:0);
+    const lf=r?r.LF:ef;
+
+    // Build bar segments HTML
+    let bars='';
+    // Helper: absolute offset → x pixel within view window
+    const ox = off => (off - viewOff0) * CW;
+
+    // Top-scale zone backgrounds (alternating tint)
+    topGroups.forEach((g,gi)=>{
+      const gx=g.start*CW; const gw=g.count*CW;
+      const bg=gi%2===0?'rgba(20,104,179,.03)':'rgba(0,0,0,.02)';
+      bars+=`<div style="position:absolute;left:${gx}px;width:${gw}px;top:0;bottom:0;background:${bg};pointer-events:none;z-index:0"></div>`;
+      if(gi>0) bars+=`<div style="position:absolute;left:${gx}px;top:0;bottom:0;width:1px;background:rgba(0,0,0,.1);pointer-events:none;z-index:0"></div>`;
+    });
+    // Bottom-scale grid lines
+    botGroups.forEach((g,gi)=>{
+      if(gi>0) bars+=`<div style="position:absolute;left:${g.start*CW}px;top:0;bottom:0;width:1px;background:rgba(0,0,0,.06);pointer-events:none;z-index:0"></div>`;
+    });
+    // Data Date line — position within view window
+    const todayVx = ox(todayOff);
+    if(todayVx>=0 && todayVx<=MAX*CW){
+      bars+=`<div style="position:absolute;left:${todayVx}px;top:0;bottom:0;width:0;border-left:2px dashed #2E8B2E;z-index:8;pointer-events:none;opacity:.7"></div>`;
+    }
+
+    // ── DUAL BAR: Baseline (top, gray) + Current Schedule (bottom, colored) ──
+    // Current Schedule ES/EF from CPM results (raw offsets — pixel-perfect)
+    const curES = r ? r.ES : (s ? s.ES : 0);
+    const curEF = r ? r.EF : (s ? s.EF : 0);
+    // Baseline from active snapshot — use stored offsets directly (no date conversion!)
+    const blSnap = isSum
+      ? (getActiveBLData() ? getActiveBLData()['wbs_'+t.wbs] : null)
+      : getBLForTask(t.id);
+    const hasBL = blSnap && (blSnap.es!=null) && (blSnap.ef!=null);
+    // If BL was stored with old format (no es/ef), fall back to date conversion
+    let blES, blEF;
+    if(hasBL){
+      blES = blSnap.es;
+      blEF = blSnap.ef;
+    } else if(blSnap && blSnap.s && blSnap.f){
+      // Legacy format: convert date to offset
+      blES = diffWD(projStartD, pd(blSnap.s));
+      blEF = diffWD(projStartD, pd(blSnap.f));
+    } else {
+      blES = -1; blEF = -1;
+    }
+    const showBLBar = (blES >= 0 && blEF > blES);
+
+    const showBL = showBLBar;
+    const showCur = curEF > curES;
+
+    if((showBL || showCur) && Math.min(showBL?blES:curES, curES) < viewOff0+MAX){
+
+      if(isSum){
+        // ═══ SUMMARY BAR ═══
+        const sES = showBL ? Math.min(blES, curES) : curES;
+        const sEF = showBL ? Math.max(blEF, curEF) : curEF;
+        const sumX = Math.max(0, ox(sES));
+        const sumW = Math.max(0, ox(Math.min(sEF, viewOff0+MAX)) - sumX);
+        const sumY = Math.floor(ROW_H / 2);
+        const d = 6;
+        bars+=`<div style="position:absolute;left:${sumX}px;width:${sumW}px;height:2px;top:${sumY}px;background:#000;z-index:5"></div>`;
+        bars+=`<div style="position:absolute;left:${sumX-d}px;top:${sumY-d}px;width:0;height:0;border-left:${d}px solid transparent;border-right:${d}px solid transparent;border-top:${d*1.5}px solid #000;z-index:6;pointer-events:none"></div>`;
+        bars+=`<div style="position:absolute;left:${sumX+sumW-d}px;top:${sumY-d}px;width:0;height:0;border-left:${d}px solid transparent;border-right:${d}px solid transparent;border-top:${d*1.5}px solid #000;z-index:6;pointer-events:none"></div>`;
+        if(pct>0){
+          const fillW=Math.round(sumW*pct/100);
+          bars+=`<div style="position:absolute;left:${sumX}px;width:${fillW}px;height:4px;top:${sumY-1}px;background:${pct===100?'#16A34A':'#2563EB'};z-index:5"></div>`;
+        }
+      } else {
+        // ═══ ACTIVITY BARS ═══
+        const barH = 9;
+        const gap = 2;
+
+        if(showBL){
+          // DUAL-BAR mode: BL top + Current bottom
+          const totalBarH = barH * 2 + gap;
+          const startY = Math.floor((ROW_H - totalBarH) / 2);
+          const blY = startY;
+          const curY = startY + barH + gap;
+
+          // ── 1. BASELINE bar (top, gray) ──
+          const bx = Math.max(0, ox(blES));
+          const bw = Math.max(0, ox(Math.min(blEF, viewOff0+MAX)) - bx);
+          if(bw > 0){
+            const blBarCol = isCrit ? 'rgba(220,38,38,.5)' : '#999';
+            bars+=`<div style="position:absolute;left:${bx}px;width:${bw}px;height:${barH}px;top:${blY}px;background:${blBarCol};z-index:2"></div>`;
+            if(pct > 0){
+              const fillW = Math.round(bw * pct/100);
+              bars+=`<div style="position:absolute;left:${bx}px;width:${fillW}px;height:${barH}px;top:${blY}px;background:${isCrit?'#991B1B':'#666'};z-index:3"></div>`;
+              if(fillW > 2 && fillW < bw){
+                bars+=`<div style="position:absolute;left:${bx+fillW}px;top:${blY-2}px;width:2px;height:${barH+4}px;background:#444;z-index:4;pointer-events:none"></div>`;
+              }
+            }
+            if(bw > 20) bars+=`<span style="position:absolute;left:${bx+2}px;top:${blY}px;font-family:var(--mono);font-size:7px;font-weight:700;color:rgba(255,255,255,.85);pointer-events:none;z-index:6;line-height:${barH}px">BL</span>`;
+          }
+
+          // ── 2. CURRENT bar (bottom, colored) ──
+          let csOff, csEnd;
+          if(t.actualStart && t.actualFinish){
+            csOff = diffWD(projStartD, pd(t.actualStart));
+            csEnd = diffWD(projStartD, pd(t.actualFinish));
+          } else if(t.actualStart){
+            csOff = diffWD(projStartD, pd(t.actualStart));
+            csEnd = csOff + t.dur;
+            if(pct > 0 && pct < 100) csEnd = Math.max(csEnd, todayOff);
+          } else {
+            csOff = curES;
+            csEnd = curEF;
+          }
+          if(csEnd > csOff){
+            const cx = Math.max(0, ox(csOff));
+            const cw = Math.max(0, ox(Math.min(csEnd, viewOff0+MAX)) - cx);
+            const hasActual = t.actualStart || t.actualFinish;
+            const curCol = pct===100 ? '#16A34A'
+                         : isCrit ? '#CC0000'
+                         : hasActual && csEnd > blEF ? '#CC0000'
+                         : hasActual ? '#2E8B2E'
+                         : '#2563EB';
+            if(cw>0){
+              bars+=`<div style="position:absolute;left:${cx}px;width:${cw}px;height:${barH}px;top:${curY}px;background:${curCol};z-index:2"></div>`;
+              if(hasActual && pct > 0 && pct < 100){
+                const afill = Math.round(cw * pct/100);
+                bars+=`<div style="position:absolute;left:${cx}px;width:${afill}px;height:${barH}px;top:${curY}px;background:${isCrit?'#990000':'#1E6B1E'};z-index:3"></div>`;
+              }
+              const cLabel = hasActual ? 'Act' : 'ES/EF';
+              if(cw > 25) bars+=`<span style="position:absolute;left:${cx+2}px;top:${curY}px;font-family:var(--mono);font-size:7px;font-weight:700;color:rgba(255,255,255,.85);pointer-events:none;z-index:6;line-height:${barH}px">${cLabel}</span>`;
+            }
+          }
+
+          // ── 3. Separate frames for each bar ──
+          // BL bar frame
+          if(bw > 0){
+            bars+=`<div style="position:absolute;left:${bx-1}px;width:${bw+2}px;height:${barH+2}px;top:${blY-1}px;border:1.5px solid rgba(0,0,0,.5);z-index:5;pointer-events:none"></div>`;
+          }
+          // Current bar frame
+          if(csEnd > csOff){
+            const cx2 = Math.max(0, ox(csOff));
+            const cw2 = Math.max(0, ox(Math.min(csEnd, viewOff0+MAX)) - cx2);
+            if(cw2>0) bars+=`<div style="position:absolute;left:${cx2-1}px;width:${cw2+2}px;height:${barH+2}px;top:${curY-1}px;border:1.5px solid rgba(0,0,0,.5);z-index:5;pointer-events:none"></div>`;
+          }
+
+          // ── 4. Float dashed ──
+          if(!isCrit && lf > curEF){
+            const fx = ox(curEF);
+            const fw = Math.max(0, ox(Math.min(lf, viewOff0+MAX)) - fx);
+            if(fw>0) bars+=`<div style="position:absolute;left:${fx}px;width:${fw}px;height:0;top:${blY+barH/2}px;border-top:1.5px dashed rgba(0,0,0,.2);z-index:2;pointer-events:none"></div>`;
+          }
+
+        } else {
+          // SINGLE-BAR mode: Current schedule only (centered)
+          const startY = Math.floor((ROW_H - barH) / 2);
+          let csOff, csEnd;
+          if(t.actualStart && t.actualFinish){
+            csOff = diffWD(projStartD, pd(t.actualStart));
+            csEnd = diffWD(projStartD, pd(t.actualFinish));
+          } else if(t.actualStart){
+            csOff = diffWD(projStartD, pd(t.actualStart));
+            csEnd = csOff + t.dur;
+            if(pct > 0 && pct < 100) csEnd = Math.max(csEnd, todayOff);
+          } else {
+            csOff = curES;
+            csEnd = curEF;
+          }
+          if(csEnd > csOff){
+            const cx = Math.max(0, ox(csOff));
+            const cw = Math.max(0, ox(Math.min(csEnd, viewOff0+MAX)) - cx);
+            const hasActual = t.actualStart || t.actualFinish;
+            const curCol = pct===100 ? '#16A34A'
+                         : isCrit ? '#CC0000'
+                         : hasActual ? '#2E8B2E'
+                         : '#2563EB';
+            if(cw>0){
+              bars+=`<div style="position:absolute;left:${cx}px;width:${cw}px;height:${barH}px;top:${startY}px;background:${curCol};z-index:2"></div>`;
+              if(pct > 0 && pct < 100){
+                const fillW = Math.round(cw * pct/100);
+                bars+=`<div style="position:absolute;left:${cx}px;width:${fillW}px;height:${barH}px;top:${startY}px;background:${isCrit?'#990000':hasActual?'#1E6B1E':'#1D4ED8'};z-index:3"></div>`;
+              }
+              const cLabel = hasActual ? 'Act' : 'ES/EF';
+              if(cw > 25) bars+=`<span style="position:absolute;left:${cx+2}px;top:${startY}px;font-family:var(--mono);font-size:7px;font-weight:700;color:rgba(255,255,255,.85);pointer-events:none;z-index:6;line-height:${barH}px">${cLabel}</span>`;
+              bars+=`<div style="position:absolute;left:${cx-1}px;width:${cw+2}px;height:${barH+4}px;top:${startY-2}px;border:1.5px solid rgba(0,0,0,.5);z-index:5;pointer-events:none"></div>`;
+            }
+          }
+          // Float
+          if(!isCrit && lf > curEF){
+            const fx = ox(curEF);
+            const fw = Math.max(0, ox(Math.min(lf, viewOff0+MAX)) - fx);
+            if(fw>0) bars+=`<div style="position:absolute;left:${fx}px;width:${fw}px;height:0;top:${startY+barH/2}px;border-top:1.5px dashed rgba(0,0,0,.2);z-index:2;pointer-events:none"></div>`;
+          }
+        }
+      }
+    }
+
+    const chartRowH = 36;
+    const tipData=encodeURIComponent(JSON.stringify({
+      id:t.id,name:t.name,pct,
+      blS:blSnap?blSnap.s:null, blF:blSnap?blSnap.f:null,
+      blName:S.activeBL>=0&&S.baselines[S.activeBL]?S.baselines[S.activeBL].name:'—',
+      curS:r?r.curStart:(s?s.cur_start:null), curF:r?r.curFinish:(s?s.cur_finish:null),
+      actS:t.actualStart,actF:t.actualFinish,
+      TF:r?.TF,delay:r?.schedDelay,
+      status:r?.status||s?.status,crit:isCrit
+    }));
+    rightHtml+=`<div class="g-chart-row" style="height:${chartRowH}px;min-height:${chartRowH}px;max-height:${chartRowH}px;width:${totalW}px;background:${rowBg}" onmouseenter="showGTip(event,'${tipData}')" onmouseleave="hideGTip()" onmousemove="moveGTip(event)">${bars}</div>`;
+  });
+
+  document.getElementById('gantt-rows-left').innerHTML=leftHtml;
+  document.getElementById('gantt-rows-right').innerHTML=`<div style="width:${totalW}px;position:relative">${rightHtml}</div>`;
+
+  // ── Sync scroll ───────────────────────────────────────────────────────────
+  const gl  = document.getElementById('gantt-left');
+  const gr  = document.getElementById('gantt-right');
+  const ghr = document.getElementById('gantt-header-right');
+
+  // Vertical sync: left ↔ right
+  let syncingV = false;
+  gl.onscroll = () => {
+    if(syncingV) return; syncingV=true;
+    gr.scrollTop = gl.scrollTop;
+    syncingV=false;
+  };
+  gr.onscroll = () => {
+    if(syncingV) return; syncingV=true;
+    gl.scrollTop = gr.scrollTop;
+    // Horizontal sync: gantt-right ↔ time-header
+    ghr.scrollLeft = gr.scrollLeft;
+    syncingV=false;
+  };
+
+  // Scroll to today on load
+  setTimeout(()=>{
+    const scrollTo = Math.max(0,(todayOff-viewOff0-10)*CW);
+    gr.scrollLeft = scrollTo;
+    ghr.scrollLeft = scrollTo;
+  },100);
+
+  // ── Ctrl + Scroll wheel → zoom ────────────────────────────────────────────
+  gr.onwheel = (e) => {
+    if(!e.ctrlKey) return;
+    e.preventDefault();
+    // anchor zoom around current viewport center
+    const centerRatio = (gr.scrollLeft + gr.clientWidth/2) / (MAX * CW);
+    const delta = e.deltaY > 0 ? -2 : 2;
+    const newVal = Math.min(60, Math.max(4, (S.gantt.colWidth||16) + delta));
+    const slider = document.getElementById('g-col-width');
+    if(slider) slider.value = newVal;
+    S.gantt.colWidth = newVal;
+    document.getElementById('g-cw-label').textContent = newVal + 'px';
+    renderGantt();
+    // Re-centre scroll after re-render
+    const newGr = document.getElementById('gantt-right');
+    const newMax = MAX * newVal;
+    setTimeout(()=>{ newGr.scrollLeft = Math.max(0, centerRatio * newMax - newGr.clientWidth/2); }, 0);
+  };
+}
+
+function setGScale(){
+  S.gantt.topScale=document.getElementById('g-top-scale').value;
+  S.gantt.botScale=document.getElementById('g-bot-scale').value;
+  renderGantt();
+}
+function setGColWidth(v){
+  S.gantt.colWidth=parseInt(v)||16;
+  document.getElementById('g-cw-label').textContent=v+'px';
+  renderGantt();
+}
+function adjustZoom(delta){
+  const newVal=Math.min(60,Math.max(4,(S.gantt.colWidth||16)+delta));
+  const cw=document.getElementById('g-col-width');
+  if(cw) cw.value=newVal;
+  setGColWidth(newVal);
+}
+function syncScaleUI(){
+  const ts=document.getElementById('g-top-scale');
+  const bs=document.getElementById('g-bot-scale');
+  const cw=document.getElementById('g-col-width');
+  if(ts) ts.value=S.gantt.topScale||'quarter';
+  if(bs) bs.value=S.gantt.botScale||'month';
+  if(cw){ cw.value=S.gantt.colWidth||16; document.getElementById('g-cw-label').textContent=(S.gantt.colWidth||16)+'px'; }
+  const vs=document.getElementById('g-view-start');
+  const ve=document.getElementById('g-view-end');
+  if(vs) vs.value=S.gantt.viewStart||'';
+  if(ve) ve.value=S.gantt.viewEnd||'';
+}
+function gFilter(f){
+  S.gantt.filter=f;
+  document.querySelectorAll('#gantt-toolbar .btn').forEach(b=>{
+    if(b.getAttribute('onclick')===`gFilter('${f}')`){b.style.background='var(--accent)';b.style.color='#fff';b.style.borderColor='var(--accent)'}
+    else if(b.getAttribute('onclick')?.startsWith('gFilter')){b.style.background='';b.style.color='';b.style.borderColor=''}
+  });
+  renderGantt();
+}
+function toggleSummaryRows(){S.gantt.showSummary=!S.gantt.showSummary;renderGantt();}
+
+function setViewRange(){
+  S.gantt.viewStart = document.getElementById('g-view-start').value || '';
+  S.gantt.viewEnd   = document.getElementById('g-view-end').value   || '';
+  renderGantt();
+}
+function resetViewRange(){
+  S.gantt.viewStart=''; S.gantt.viewEnd='';
+  document.getElementById('g-view-start').value='';
+  document.getElementById('g-view-end').value='';
+  renderGantt();
+}
+
+function showGTip(e,enc){
+  const d=JSON.parse(decodeURIComponent(enc));
+  const tip=document.getElementById('tip');
+  tip.innerHTML=`<strong style="color:var(--txt);font-size:11px;display:block;margin-bottom:4px;border-bottom:1px solid var(--line);padding-bottom:4px">${d.id} — ${d.name}</strong>
+    ${d.crit?'<span style="color:var(--red)">★ Critical Path</span><br>':''}
+    ${d.blS?`<span style="color:#999">${d.blName}:</span> ${d.blS} → ${d.blF}<br>`:''}
+    <span style="color:var(--accent)">Current:</span> ${d.curS||'—'} → ${d.curF||'—'}<br>
+    ${d.actS?`<span style="color:var(--green)">Actual:</span> ${d.actS} → ${d.actF||'ongoing'}<br>`:''}
+    TF: ${d.TF??'—'}d &nbsp;|&nbsp; ${d.pct}% — ${d.status||'—'}<br>
+    ${d.delay>0?`<span style="color:var(--amber)">⚠ Delay: +${d.delay}d</span>`:''}`;
+  tip.style.display='block';
+  moveGTip(e);
+}
+function moveGTip(e){
+  const t=document.getElementById('tip');
+  let x=e.clientX+14,y=e.clientY-10;
+  if(x+280>window.innerWidth)x=e.clientX-290;
+  if(y+160>window.innerHeight)y=e.clientY-170;
+  t.style.left=x+'px';t.style.top=y+'px';
+}
+function hideGTip(){ document.getElementById('tip').style.display='none'; }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// GANTT INLINE EDITING
+// ═══════════════════════════════════════════════════════════════════════════════
+function ganttEditDate(taskIdx, field, cell){
+  if(taskIdx<0||taskIdx>=S.tasks.length) return;
+  const t=S.tasks[taskIdx];
+  if(t.dur===0) return; // skip summary
+  const old=t[field]||'';
+  const inp=document.createElement('input');
+  inp.type='date'; inp.value=old;
+  inp.style.cssText='position:absolute;inset:0;border:1.5px solid var(--accent);outline:none;font-family:var(--mono);font-size:9px;text-align:center;background:var(--bg2);color:var(--txt);padding:0 2px;z-index:2;width:100%;height:100%';
+  cell.style.position='relative';
+  cell.appendChild(inp);
+  inp.focus();
+  const commit=()=>{
+    const val=inp.value||null;
+    if(val!==old){
+      pushUndo('Edit '+field);
+      t[field]=val;
+      // Auto-set pct if both dates filled
+      if(field==='actualFinish' && val && t.actualStart) t.pct=100;
+      if(field==='actualStart' && val && !t.actualFinish && t.pct===0) t.pct=Math.max(t.pct,1);
+      saveToStorage(); runCPM();
+    } else {
+      inp.remove();
+    }
+  };
+  inp.addEventListener('change',commit);
+  inp.addEventListener('blur',()=>{ setTimeout(()=>inp.remove(),100); });
+  inp.addEventListener('keydown',e=>{
+    if(e.key==='Enter') commit();
+    if(e.key==='Escape') inp.remove();
+  });
+}
+
+function ganttEditPct(taskIdx, cell){
+  if(taskIdx<0||taskIdx>=S.tasks.length) return;
+  const t=S.tasks[taskIdx];
+  if(t.dur===0) return;
+  const old=t.pct||0;
+  const inp=document.createElement('input');
+  inp.type='number'; inp.min='0'; inp.max='100'; inp.value=old;
+  inp.style.cssText='position:absolute;inset:0;border:1.5px solid var(--accent);outline:none;font-family:var(--mono);font-size:10px;text-align:center;background:var(--bg2);color:var(--txt);padding:0 2px;z-index:2;width:100%;height:100%';
+  cell.style.position='relative';
+  cell.appendChild(inp);
+  inp.focus(); inp.select();
+  const commit=()=>{
+    const val=Math.max(0,Math.min(100,parseInt(inp.value)||0));
+    if(val!==old){
+      pushUndo('Edit %');
+      t.pct=val;
+      if(val===100 && !t.actualFinish && t.actualStart){
+        // Optionally auto-set actual finish to data date
+      }
+      saveToStorage(); runCPM();
+    } else {
+      inp.remove();
+    }
+  };
+  inp.addEventListener('blur',commit);
+  inp.addEventListener('keydown',e=>{
+    if(e.key==='Enter') commit();
+    if(e.key==='Escape') inp.remove();
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// EXCEL IMPORT / EXPORT
+// ═══════════════════════════════════════════════════════════════════════════════
+function importExcel(){ document.getElementById('import-xlsx').click(); }
+
+function handleImportExcel(e){
+  const file=e.target.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    const wb=XLSX.read(ev.target.result,{type:'array'});
+    // Try "📋 Task Input" sheet first, fallback to first sheet
+    const sheetName=wb.SheetNames.find(n=>n.includes('Task Input'))||wb.SheetNames[0];
+    const ws=wb.Sheets[sheetName];
+    const data=XLSX.utils.sheet_to_json(ws,{header:1,raw:false});
+
+    // Find header row (look for "Activity ID" or "ID")
+    let hdr=-1;
+    for(let i=0;i<Math.min(15,data.length);i++){
+      const r=data[i]||[];
+      if(r.some(c=>c&&String(c).toLowerCase().includes('activity id')||String(c).toLowerCase()==='id')){hdr=i;break;}
+    }
+    if(hdr===-1){hdr=0}
+
+    const headers=(data[hdr]||[]).map(h=>String(h||'').toLowerCase().trim());
+    const findCol=(keywords)=>{
+      for(const kw of keywords){ const i=headers.findIndex(h=>h.includes(kw)); if(i>=0) return i; }
+      return -1;
+    };
+    const cols={
+      id:findCol(['activity id','id','no']),
+      wbs:findCol(['wbs']),
+      name:findCol(['activity name','name','description','task name']),
+      phase:findCol(['phase','discipline']),
+      resource:findCol(['resource','responsible']),
+      dur:findCol(['orig.dur','orig dur','duration','dur']),
+      preds:findCol(['predecessors','predecessor','pred']),
+      actualStart:findCol(['actual start','act.start','actual_start']),
+      actualFinish:findCol(['actual finish','act.finish','actual_finish']),
+      pct:findCol(['% comp','%','percent','complete','pct']),
+    };
+
+    const tasks=[];
+    for(let i=hdr+1;i<data.length;i++){
+      const r=data[i]; if(!r||!r.length) continue;
+      const id=cols.id>=0?parseInt(r[cols.id]):null;
+      if(!id||isNaN(id)) continue;
+      const name=cols.name>=0?String(r[cols.name]||'').replace(/^[▌▸\s]+/,'').trim():'';
+      if(!name) continue;
+      let wbs=cols.wbs>=0?String(r[cols.wbs]||'').replace(/^L\d+\s*[▌▸\s]+/,'').trim():'';
+      const dur=cols.dur>=0?parseInt(r[cols.dur])||0:0;
+      let pct=cols.pct>=0?parseFloat(r[cols.pct])||0:0;
+      if(pct>1&&pct<=100) pct=Math.round(pct);
+      else if(pct<=1) pct=Math.round(pct*100);
+      pct=Math.max(0,Math.min(100,pct));
+      const preds=cols.preds>=0?String(r[cols.preds]||'').replace(/[—\-]+/g,'').trim():'';
+      let as=cols.actualStart>=0?r[cols.actualStart]:null;
+      let af=cols.actualFinish>=0?r[cols.actualFinish]:null;
+      const cleanDate=v=>{
+        if(!v||['—','Auto','auto',''].includes(String(v).trim())) return null;
+        const d=new Date(v); return isNaN(d)?null:ds(d);
+      };
+      tasks.push({
+        id,wbs,name,
+        phase:cols.phase>=0?String(r[cols.phase]||''):'',
+        resource:cols.resource>=0?String(r[cols.resource]||''):'',
+        dur,predecessors:preds,
+        actualStart:cleanDate(as),actualFinish:cleanDate(af),
+        pct,blStart:null,blFinish:null,TF:null,status:'Not Started'
+      });
+    }
+
+    // Settings from ⚙️ Settings sheet
+    const sSheet=wb.Sheets[wb.SheetNames.find(n=>n.includes('Settings'))];
+    if(sSheet){
+      const sData=XLSX.utils.sheet_to_json(sSheet,{header:1,raw:false});
+      sData.forEach(r=>{
+        if(!r[0]||!r[1]) return;
+        const k=String(r[0]).trim(); const v=String(r[1]).trim();
+        if(k.toLowerCase().includes('project name')) S.settings.name=v;
+        if(k.toLowerCase().includes('manager')) S.settings.pm=v;
+        if(k.toLowerCase().includes('start date')) S.settings.start=v.match(/^\d{4}-\d{2}-\d{2}/)?v:S.settings.start;
+        if(k.toLowerCase().includes('data date')) S.settings.dataDate=v.match(/^\d{4}-\d{2}-\d{2}/)?v:S.settings.dataDate;
+      });
+    }
+
+    S.tasks=tasks;
+    updateTopbar(); renderTasks(); saveToStorage();
+    toast(`Imported ${tasks.length} rows from ${file.name}`,'success');
+    e.target.value='';
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function exportExcel(){
+  if(!S.tasks.length){toast('No tasks to export','error');return;}
+  const wb=XLSX.utils.book_new();
+
+  // Settings sheet
+  const sData=[['Project Name',S.settings.name],['Project Manager',S.settings.pm],
+    ['Project Start Date',S.settings.start],['Data Date',S.settings.dataDate],
+    ['Working Days/Week',S.settings.wdays]];
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(sData),'Settings');
+
+  // Task sheet
+  const hdr=['Activity ID','WBS','Activity Name','Phase','Resource',
+    'Orig.Dur','Predecessors','Actual Start','Actual Finish','% Complete','BL Start','BL Finish','TF','Status'];
+  const rows=S.tasks.map(t=>[t.id,t.wbs,t.name,t.phase,t.resource,t.dur,
+    t.predecessors,t.actualStart||'',t.actualFinish||'',t.pct,t.blStart||'',t.blFinish||'',t.TF??'',t.status||'']);
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([hdr,...rows]),'Task Input');
+
+  // Schedule sheet (if CPM run)
+  if(S.results){
+    const {results,projStartD}=S.results;
+    const sh=['ID','WBS','Name','Phase','Dur','ES','EF','LS','LF','BL Start','BL Finish','TF','FF','Act.Start','Act.Finish','Var.S','Var.F','%','Critical','Status'];
+    const sr=results.map(r=>[r.id,r.wbs,r.name,r.phase,r.dur,
+      ds(addWD(projStartD,r.ES)),ds(addWD(projStartD,r.EF)),
+      ds(addWD(projStartD,r.LS)),ds(addWD(projStartD,r.LF)),
+      r.blStart,r.blFinish,r.TF,r.FF,r.actualStart||'',r.actualFinish||'',r.startVar,r.finishVar,r.pct,r.critical?'YES':'',r.status]);
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([sh,...sr]),'Schedule');
+  }
+
+  XLSX.writeFile(wb,S.settings.name.replace(/\s+/g,'_')+'_CPM.xlsx');
+  toast('Exported to Excel','success');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// JSON PROJECT SAVE/LOAD
+// ═══════════════════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════════════
+// STORAGE  (localStorage)
+// ═══════════════════════════════════════════════════════════════════════════════
+function saveToStorage(){
+  try{ localStorage.setItem('cpm_project',JSON.stringify({settings:S.settings,tasks:S.tasks,baselines:S.baselines,activeBL:S.activeBL})); }catch(e){}
+}
+function loadFromStorage(){
+  try{
+    const d=localStorage.getItem('cpm_project');
+    if(d){ const p=JSON.parse(d); S.settings={...S.settings,...p.settings}; S.tasks=p.tasks||[];
+      S.baselines=p.baselines||[]; S.activeBL=p.activeBL??-1; return true; }
+  }catch(e){}
+  return false;
+}
+// ═══════════════════════════════════════════════════════════════════════════════
+// JSON PROJECT SAVE/LOAD
+// ═══════════════════════════════════════════════════════════════════════════════
+function exportProject(){
+  const blob=new Blob([JSON.stringify({settings:S.settings,tasks:S.tasks,baselines:S.baselines,activeBL:S.activeBL},null,2)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download=S.settings.name.replace(/\s+/g,'_')+'_project.json'; a.click();
+  toast('Project exported');
+}
+function importProjectJSON(e){
+  const file=e.target.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    const p=JSON.parse(ev.target.result);
+    S.settings={...S.settings,...p.settings}; S.tasks=p.tasks||[];
+    S.baselines=p.baselines||[]; S.activeBL=p.activeBL??-1;
+    updateSettingsForm(); updateTopbar(); renderTasks();
+    toast(`Loaded: ${S.settings.name}`,'success');
+    e.target.value='';
+  };
+  reader.readAsText(file);
+}
+function updateSettingsForm(){
+  document.getElementById('s-name').value=S.settings.name;
+  document.getElementById('s-pm').value=S.settings.pm;
+  document.getElementById('s-start').value=S.settings.start;
+  document.getElementById('s-data').value=S.settings.dataDate;
+  const wsel=document.getElementById('s-wdays');
+  if(wsel) wsel.value=String(S.settings.wdays||5);
+  renderPhaseManager();
+}
+
+function refreshAll(){
+  renderTasks();
+  const active=document.querySelector('.tab.active')?.id?.replace('tab-','');
+  if(active==='dashboard') renderDashboard();
+  if(active==='gantt') renderGantt();
+  if(active==='schedule') renderSchedule('all');
+  if(active==='delay') renderDelay();
+  renderDashboard();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SAMPLE DATA (EGAT Substation)
+// ═══════════════════════════════════════════════════════════════════════════════
+function loadSample(){
+  S.tasks=[
+    {id:1000,wbs:'1',name:'PRELIMINARY & PERMITS',dur:0,predecessors:'',phase:'Preliminary & Permit',resource:'',actualStart:null,actualFinish:null,pct:0,blStart:null,blFinish:null,TF:null,status:'Not Started'},
+    {id:1100,wbs:'1.1',name:'Survey & Investigation',dur:0,predecessors:'',phase:'Survey & Investigation',resource:'',actualStart:null,actualFinish:null,pct:0,blStart:null,blFinish:null,TF:null,status:'Not Started'},
+    {id:1110,wbs:'1.1.1',name:'Site Survey & Topography',dur:10,predecessors:'',phase:'Survey & Investigation',resource:'Survey Team',actualStart:'2025-01-06',actualFinish:'2025-01-17',pct:100,blStart:null,blFinish:null,TF:null,status:'Not Started'},
+    {id:1120,wbs:'1.1.2',name:'Soil Investigation & Boring',dur:15,predecessors:'1110FS',phase:'Survey & Investigation',resource:'Geotech',actualStart:'2025-01-20',actualFinish:'2025-02-07',pct:100,blStart:null,blFinish:null,TF:null,status:'Not Started'},
+    {id:1200,wbs:'1.2',name:'Environmental & Social',dur:0,predecessors:'',phase:'Survey & Investigation',resource:'',actualStart:null,actualFinish:null,pct:0,blStart:null,blFinish:null,TF:null,status:'Not Started'},
+    {id:1210,wbs:'1.2.1',name:'Environmental Impact Assessment',dur:45,predecessors:'1110SS+5',phase:'Survey & Investigation',resource:'Consultant',actualStart:'2025-01-10',actualFinish:null,pct:80,blStart:null,blFinish:null,TF:null,status:'Not Started'},
+    {id:1220,wbs:'1.2.2',name:'Public Hearing',dur:10,predecessors:'1210FS',phase:'Survey & Investigation',resource:'PM',actualStart:null,actualFinish:null,pct:0,blStart:null,blFinish:null,TF:null,status:'Not Started'},
+    {id:1300,wbs:'1.3',name:'Permits & Approvals',dur:0,predecessors:'',phase:'Preliminary & Permit',resource:'',actualStart:null,actualFinish:null,pct:0,blStart:null,blFinish:null,TF:null,status:'Not Started'},
+    {id:1310,wbs:'1.3.1',name:'Regulatory Permit Applications',dur:20,predecessors:'1220FS|1120FS',phase:'Preliminary & Permit',resource:'PM',actualStart:null,actualFinish:null,pct:0,blStart:null,blFinish:null,TF:null,status:'Not Started'},
+    {id:1320,wbs:'1.3.2',name:'EGAT BOD Approval',dur:5,predecessors:'1310FS',phase:'Preliminary & Permit',resource:'EGAT',actualStart:null,actualFinish:null,pct:0,blStart:null,blFinish:null,TF:null,status:'Not Started'},
+    {id:2000,wbs:'2',name:'SITE WORKS',dur:0,predecessors:'',phase:'Earthworks',resource:'',actualStart:null,actualFinish:null,pct:0,blStart:null,blFinish:null,TF:null,status:'Not Started'},
+    {id:2100,wbs:'2.1',name:'Clearing & Earthworks',dur:0,predecessors:'',phase:'Earthworks',resource:'',actualStart:null,actualFinish:null,pct:0,blStart:null,blFinish:null,TF:null,status:'Not Started'},
+    {id:2110,wbs:'2.1.1',name:'Site Clearing & Demolition',dur:20,predecessors:'1110SS+10',phase:'Earthworks',resource:'Civil Cont.',actualStart:'2025-01-20',actualFinish:null,pct:60,blStart:null,blFinish:null,TF:null,status:'Not Started'},
+    {id:2120,wbs:'2.1.2',name:'Earthworks & Platform Grading',dur:25,predecessors:'2110FS',phase:'Earthworks',resource:'Civil Cont.',actualStart:null,actualFinish:null,pct:0,blStart:null,blFinish:null,TF:null,status:'Not Started'},
+    {id:3000,wbs:'3',name:'CIVIL & STRUCTURAL WORKS',dur:0,predecessors:'',phase:'Foundation Works',resource:'',actualStart:null,actualFinish:null,pct:0,blStart:null,blFinish:null,TF:null,status:'Not Started'},
+    {id:3100,wbs:'3.1',name:'Design & Engineering',dur:0,predecessors:'',phase:'Foundation Works',resource:'',actualStart:null,actualFinish:null,pct:0,blStart:null,blFinish:null,TF:null,status:'Not Started'},
+    {id:3110,wbs:'3.1.1',name:'Foundation Design',dur:20,predecessors:'1120FS',phase:'Foundation Works',resource:'Structural Eng',actualStart:'2025-01-27',actualFinish:null,pct:70,blStart:null,blFinish:null,TF:null,status:'Not Started'},
+    {id:3120,wbs:'3.1.2',name:'Structural Drawing Approval',dur:5,predecessors:'3110FS',phase:'Foundation Works',resource:'EGAT',actualStart:null,actualFinish:null,pct:0,blStart:null,blFinish:null,TF:null,status:'Not Started'},
+    {id:3200,wbs:'3.2',name:'Foundations',dur:0,predecessors:'',phase:'Foundation Works',resource:'',actualStart:null,actualFinish:null,pct:0,blStart:null,blFinish:null,TF:null,status:'Not Started'},
+    {id:3210,wbs:'3.2.1',name:'Foundation – Control Building',dur:30,predecessors:'3120FS|2120SS+5',phase:'Foundation Works',resource:'Civil Cont.',actualStart:null,actualFinish:null,pct:0,blStart:null,blFinish:null,TF:null,status:'Not Started'},
+    {id:3220,wbs:'3.2.2',name:'Foundation – Equipment Bays',dur:25,predecessors:'3120FS|2120SS+10',phase:'Foundation Works',resource:'Civil Cont.',actualStart:null,actualFinish:null,pct:0,blStart:null,blFinish:null,TF:null,status:'Not Started'},
+    {id:3310,wbs:'3.3.1',name:'Control Building Structure',dur:60,predecessors:'3210FS',phase:'Building & Architecture',resource:'Building Cont.',actualStart:null,actualFinish:null,pct:0,blStart:null,blFinish:null,TF:null,status:'Not Started'},
+    {id:3320,wbs:'3.3.2',name:'Control Building Fit-out & MEP',dur:20,predecessors:'3310FF-10',phase:'Building & Architecture',resource:'Building Cont.',actualStart:null,actualFinish:null,pct:0,blStart:null,blFinish:null,TF:null,status:'Not Started'},
+    {id:3330,wbs:'3.3.3',name:'Steel Structure Erection',dur:25,predecessors:'3220FS',phase:'Structural & Civil',resource:'Steel Cont.',actualStart:null,actualFinish:null,pct:0,blStart:null,blFinish:null,TF:null,status:'Not Started'},
+    {id:4000,wbs:'4',name:'PROCUREMENT',dur:0,predecessors:'',phase:'Procurement',resource:'',actualStart:null,actualFinish:null,pct:0,blStart:null,blFinish:null,TF:null,status:'Not Started'},
+    {id:4110,wbs:'4.1.1',name:'Power Transformer (132/22kV 50MVA)',dur:90,predecessors:'1320SS',phase:'Procurement',resource:'Procurement',actualStart:null,actualFinish:null,pct:0,blStart:null,blFinish:null,TF:null,status:'Not Started'},
+    {id:4120,wbs:'4.1.2',name:'SF6 Circuit Breakers',dur:75,predecessors:'1320SS+5',phase:'Procurement',resource:'Procurement',actualStart:null,actualFinish:null,pct:0,blStart:null,blFinish:null,TF:null,status:'Not Started'},
+    {id:4220,wbs:'4.2.2',name:'P&C / SCADA Panel Fabrication',dur:45,predecessors:'1320SS',phase:'Protection & SCADA',resource:'P&C Vendor',actualStart:null,actualFinish:null,pct:0,blStart:null,blFinish:null,TF:null,status:'Not Started'},
+    {id:5000,wbs:'5',name:'EQUIPMENT INSTALLATION',dur:0,predecessors:'',phase:'Equipment Installation',resource:'',actualStart:null,actualFinish:null,pct:0,blStart:null,blFinish:null,TF:null,status:'Not Started'},
+    {id:5110,wbs:'5.1.1',name:'Power Transformer Installation',dur:15,predecessors:'4110FS|3330SS+5',phase:'Equipment Installation',resource:'E&M Cont.',actualStart:null,actualFinish:null,pct:0,blStart:null,blFinish:null,TF:null,status:'Not Started'},
+    {id:5120,wbs:'5.1.2',name:'Circuit Breaker Installation',dur:12,predecessors:'3330SS+10',phase:'Equipment Installation',resource:'E&M Cont.',actualStart:null,actualFinish:null,pct:0,blStart:null,blFinish:null,TF:null,status:'Not Started'},
+    {id:5140,wbs:'5.1.4',name:'Bus Duct & HV Connections',dur:15,predecessors:'5120SS+5|5110FF',phase:'Equipment Installation',resource:'E&M Cont.',actualStart:null,actualFinish:null,pct:0,blStart:null,blFinish:null,TF:null,status:'Not Started'},
+    {id:5210,wbs:'5.2.1',name:'P&C Panel Installation',dur:15,predecessors:'3320SS+10|4220FS',phase:'Protection & SCADA',resource:'P&C Cont.',actualStart:null,actualFinish:null,pct:0,blStart:null,blFinish:null,TF:null,status:'Not Started'},
+    {id:6000,wbs:'6',name:'CABLE WORKS',dur:0,predecessors:'',phase:'Cable Works',resource:'',actualStart:null,actualFinish:null,pct:0,blStart:null,blFinish:null,TF:null,status:'Not Started'},
+    {id:6110,wbs:'6.1.1',name:'HV Power Cable Installation',dur:20,predecessors:'5140SS+5',phase:'Cable Works',resource:'Cable Cont.',actualStart:null,actualFinish:null,pct:0,blStart:null,blFinish:null,TF:null,status:'Not Started'},
+    {id:6210,wbs:'6.2.1',name:'Control & Signal Cable Installation',dur:25,predecessors:'3320SS+15',phase:'Cable Works',resource:'Cable Cont.',actualStart:null,actualFinish:null,pct:0,blStart:null,blFinish:null,TF:null,status:'Not Started'},
+    {id:6230,wbs:'6.2.3',name:'Cable Termination & Testing',dur:15,predecessors:'6110FF|6210FF',phase:'Cable Works',resource:'Cable Cont.',actualStart:null,actualFinish:null,pct:0,blStart:null,blFinish:null,TF:null,status:'Not Started'},
+    {id:7000,wbs:'7',name:'TESTING & COMMISSIONING',dur:0,predecessors:'',phase:'Testing & Commissioning',resource:'',actualStart:null,actualFinish:null,pct:0,blStart:null,blFinish:null,TF:null,status:'Not Started'},
+    {id:7110,wbs:'7.1.1',name:'Pre-Commissioning Tests',dur:15,predecessors:'6230FS|5210FS',phase:'Testing & Commissioning',resource:'T&C Team',actualStart:null,actualFinish:null,pct:0,blStart:null,blFinish:null,TF:null,status:'Not Started'},
+    {id:7210,wbs:'7.2.1',name:'Commissioning & System Tests',dur:20,predecessors:'7110FS',phase:'Testing & Commissioning',resource:'T&C Team',actualStart:null,actualFinish:null,pct:0,blStart:null,blFinish:null,TF:null,status:'Not Started'},
+    {id:7220,wbs:'7.2.2',name:'EGAT Site Acceptance Test',dur:10,predecessors:'7210SS+5',phase:'Testing & Commissioning',resource:'EGAT Inspector',actualStart:null,actualFinish:null,pct:0,blStart:null,blFinish:null,TF:null,status:'Not Started'},
+    {id:8000,wbs:'8',name:'INSPECTION & HANDOVER',dur:0,predecessors:'',phase:'Inspection & Approval',resource:'',actualStart:null,actualFinish:null,pct:0,blStart:null,blFinish:null,TF:null,status:'Not Started'},
+    {id:8110,wbs:'8.1.1',name:'Trial Operation (72-hr Run)',dur:5,predecessors:'7220FS',phase:'Inspection & Approval',resource:'Operator',actualStart:null,actualFinish:null,pct:0,blStart:null,blFinish:null,TF:null,status:'Not Started'},
+    {id:8120,wbs:'8.1.2',name:'EGAT Final Inspection & Approval',dur:5,predecessors:'8110FS',phase:'Inspection & Approval',resource:'EGAT',actualStart:null,actualFinish:null,pct:0,blStart:null,blFinish:null,TF:null,status:'Not Started'},
+    {id:8130,wbs:'8.1.3',name:'Commercial Operation Date (COD)',dur:1,predecessors:'8120FS',phase:'Inspection & Approval',resource:'PM',actualStart:null,actualFinish:null,pct:0,blStart:null,blFinish:null,TF:null,status:'Not Started'},
+  ];
+  S.baselines=[]; S.activeBL=-1;
+  renderTasks(); saveToStorage(); updateBLSelector();
+  toast('EGAT sample data loaded — click ▶ Calculate CPM','success');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════════════════════
+(function init(){
+  if(!loadFromStorage()) loadSample();
+  updateSettingsForm(); updateTopbar(); renderTasks();
+  renderPhaseManager(); updateBLSelector();
+  if(S.tasks.length) runCPM();
+})();
+</script>
+</body>
+</html>
