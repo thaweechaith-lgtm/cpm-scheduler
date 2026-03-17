@@ -1,0 +1,1316 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0F172A">
+<title>CPM Mobile</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@600;700;800&family=Sarabun:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ── Reset & Root ── */
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg0:   #0F172A;
+  --bg1:   #1E293B;
+  --bg2:   #263347;
+  --bg3:   #2E3D52;
+  --line:  #334155;
+  --line2: #475569;
+  --accent:#3B82F6;
+  --accent2:#06B6D4;
+  --gold:  #F59E0B;
+  --red:   #EF4444;
+  --green: #22C55E;
+  --amber: #F97316;
+  --purple:#A78BFA;
+  --txt:   #F1F5F9;
+  --txt2:  #CBD5E1;
+  --txt3:  #64748B;
+  --mono:  'DM Mono',monospace;
+  --sans:  'Sarabun',sans-serif;
+  --disp:  'Syne',sans-serif;
+  --nav-h: 64px;
+  --top-h: 56px;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-top:    env(safe-area-inset-top, 0px);
+}
+html,body{height:100%;overflow:hidden;background:var(--bg0)}
+body{font-family:var(--sans);color:var(--txt);font-size:14px;line-height:1.5;overscroll-behavior:none}
+
+/* scrollbar */
+::-webkit-scrollbar{width:3px;height:3px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--line2);border-radius:2px}
+
+/* ── App Shell ── */
+#app{display:flex;flex-direction:column;height:100%;height:100dvh}
+
+/* ── Top Bar ── */
+#topbar{
+  background:var(--bg1);
+  border-bottom:1px solid var(--line);
+  padding:0 16px;
+  padding-top:var(--safe-top);
+  height:calc(var(--top-h) + var(--safe-top));
+  display:flex;align-items:center;gap:12px;
+  flex-shrink:0;
+  box-shadow:0 1px 12px rgba(0,0,0,.4);
+  position:relative;z-index:50;
+}
+.logo{
+  font-family:var(--disp);font-size:15px;font-weight:800;
+  color:var(--txt);display:flex;align-items:center;gap:6px;
+}
+.logo span{color:var(--accent)}
+.proj-label{
+  flex:1;font-family:var(--mono);font-size:10px;color:var(--txt3);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.data-date{
+  font-family:var(--mono);font-size:9px;color:var(--gold);
+  background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.25);
+  padding:3px 8px;border-radius:3px;white-space:nowrap;flex-shrink:0;
+}
+.icon-btn{
+  width:36px;height:36px;border-radius:8px;border:1px solid var(--line);
+  background:var(--bg2);display:flex;align-items:center;justify-content:center;
+  cursor:pointer;font-size:16px;flex-shrink:0;color:var(--txt2);
+}
+.icon-btn:active{background:var(--bg3)}
+
+/* ── Content area ── */
+#content{flex:1;overflow:hidden;position:relative}
+.view{display:none;height:100%;overflow-y:auto;padding:16px 16px calc(var(--nav-h) + var(--safe-bottom) + 16px)}
+.view.active{display:block}
+
+/* ── Bottom Nav ── */
+#bottomnav{
+  background:var(--bg1);
+  border-top:1px solid var(--line);
+  padding-bottom:var(--safe-bottom);
+  height:calc(var(--nav-h) + var(--safe-bottom));
+  display:flex;align-items:center;
+  flex-shrink:0;
+  position:relative;z-index:50;
+  box-shadow:0 -1px 12px rgba(0,0,0,.4);
+}
+.nav-item{
+  flex:1;display:flex;flex-direction:column;align-items:center;
+  gap:3px;padding:8px 4px;cursor:pointer;
+  font-family:var(--mono);font-size:9px;color:var(--txt3);
+  letter-spacing:.4px;transition:color .15s;
+  -webkit-user-select:none;user-select:none;
+}
+.nav-item .nav-ico{font-size:18px;line-height:1;transition:transform .15s}
+.nav-item.active{color:var(--accent)}
+.nav-item.active .nav-ico{transform:translateY(-1px)}
+.nav-item:active .nav-ico{transform:scale(.9)}
+
+/* ── Cards ── */
+.card{background:var(--bg1);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+.card+.card{margin-top:10px}
+
+/* ── KPI grid ── */
+.kpi-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.kpi-card{
+  background:var(--bg1);border:1px solid var(--line);border-radius:10px;
+  padding:12px 14px;display:flex;flex-direction:column;gap:3px;
+}
+.kpi-card.accent{border-left:3px solid var(--accent)}
+.kpi-card.green{border-left:3px solid var(--green)}
+.kpi-card.red{border-left:3px solid var(--red)}
+.kpi-card.amber{border-left:3px solid var(--amber)}
+.kpi-card.gold{border-left:3px solid var(--gold)}
+.kpi-card.purple{border-left:3px solid var(--purple)}
+.kpi-label{font-family:var(--mono);font-size:8px;color:var(--txt3);text-transform:uppercase;letter-spacing:.6px}
+.kpi-val{font-family:var(--disp);font-size:22px;font-weight:700;color:var(--txt);line-height:1}
+.kpi-sub{font-family:var(--mono);font-size:9px;color:var(--txt3);margin-top:1px}
+
+/* ── Progress bar ── */
+.prog-track{height:5px;background:var(--bg3);border-radius:3px;overflow:hidden;margin-top:6px}
+.prog-fill{height:100%;border-radius:3px;transition:width .5s ease}
+
+/* ── Section title ── */
+.sec-title{
+  font-family:var(--disp);font-size:10px;font-weight:700;color:var(--txt3);
+  letter-spacing:1.4px;text-transform:uppercase;
+  margin:18px 0 10px;display:flex;align-items:center;gap:8px;
+}
+.sec-title::after{content:'';flex:1;height:1px;background:var(--line)}
+
+/* ── Badge ── */
+.badge{
+  display:inline-flex;align-items:center;
+  font-family:var(--mono);font-size:8px;font-weight:500;
+  padding:2px 6px;border-radius:3px;white-space:nowrap;
+}
+.badge.green{background:rgba(34,197,94,.15);color:var(--green);border:1px solid rgba(34,197,94,.25)}
+.badge.red{background:rgba(239,68,68,.15);color:var(--red);border:1px solid rgba(239,68,68,.25)}
+.badge.amber{background:rgba(249,115,22,.15);color:var(--amber);border:1px solid rgba(249,115,22,.25)}
+.badge.blue{background:rgba(59,130,246,.15);color:var(--accent);border:1px solid rgba(59,130,246,.25)}
+.badge.grey{background:rgba(100,116,139,.15);color:var(--txt3);border:1px solid var(--line)}
+.badge.crit{background:rgba(239,68,68,.2);color:#fca5a5;border:1px solid rgba(239,68,68,.4)}
+.badge.gold{background:rgba(245,158,11,.15);color:var(--gold);border:1px solid rgba(245,158,11,.25)}
+.badge.purple{background:rgba(167,139,250,.15);color:var(--purple);border:1px solid rgba(167,139,250,.25)}
+
+/* ── Task Card ── */
+.task-card{
+  background:var(--bg1);border:1px solid var(--line);border-radius:10px;
+  padding:12px 14px;margin-bottom:10px;
+  border-left:3px solid var(--line);
+  cursor:pointer;transition:border-color .15s, background .1s;
+  -webkit-user-select:none;user-select:none;
+}
+.task-card:active{background:var(--bg2)}
+.task-card.crit{border-left-color:var(--red)}
+.task-card.done{border-left-color:var(--green);opacity:.8}
+.task-card.inprog{border-left-color:var(--accent)}
+.task-card.delay{border-left-color:var(--amber)}
+.task-card-top{display:flex;align-items:flex-start;gap:8px;margin-bottom:6px}
+.task-card-name{flex:1;font-size:13px;font-weight:600;color:var(--txt);line-height:1.3}
+.task-card-meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.task-card-dates{font-family:var(--mono);font-size:9px;color:var(--txt3);margin-top:4px}
+.task-pct-bar{margin-top:8px}
+
+/* ── Filter chips ── */
+.chip-row{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:12px;-webkit-overflow-scrolling:touch}
+.chip-row::-webkit-scrollbar{height:0}
+.chip{
+  font-family:var(--mono);font-size:9px;white-space:nowrap;
+  padding:5px 11px;border-radius:20px;cursor:pointer;
+  border:1px solid var(--line2);background:var(--bg2);color:var(--txt3);
+  transition:all .15s;flex-shrink:0;
+}
+.chip.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.chip:active{transform:scale(.95)}
+
+/* ── Bottom Sheet ── */
+#sheet-overlay{
+  display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;
+  backdrop-filter:blur(2px);
+}
+#sheet-overlay.open{display:flex;align-items:flex-end}
+#sheet{
+  width:100%;max-height:90dvh;
+  background:var(--bg1);border-radius:16px 16px 0 0;
+  border-top:1px solid var(--line2);
+  overflow-y:auto;
+  animation:slideUp .25s ease;
+  padding-bottom:max(20px, var(--safe-bottom));
+}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.sheet-handle{width:40px;height:4px;background:var(--line2);border-radius:2px;margin:12px auto 0}
+.sheet-header{padding:14px 18px 10px;border-bottom:1px solid var(--line)}
+.sheet-title{font-family:var(--disp);font-size:15px;font-weight:700;color:var(--txt)}
+.sheet-body{padding:16px 18px}
+
+/* ── Form elements ── */
+.form-row{display:flex;flex-direction:column;gap:5px;margin-bottom:14px}
+.form-row label{font-family:var(--mono);font-size:9px;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px}
+.form-row input,.form-row select{
+  background:var(--bg2);border:1px solid var(--line);color:var(--txt);
+  font-family:var(--mono);font-size:13px;
+  padding:10px 12px;border-radius:8px;outline:none;width:100%;
+  -webkit-appearance:none;
+}
+.form-row input:focus,.form-row select:focus{border-color:var(--accent)}
+.form-row select option{background:var(--bg2)}
+
+/* PCT slider */
+.pct-slider-row{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.pct-slider-row input[type=range]{
+  flex:1;-webkit-appearance:none;appearance:none;
+  height:6px;border-radius:3px;background:var(--bg3);outline:none;border:none;padding:0;
+}
+.pct-slider-row input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:22px;height:22px;
+  border-radius:50%;background:var(--accent);cursor:pointer;
+  box-shadow:0 0 0 3px rgba(59,130,246,.25);
+}
+.pct-val{font-family:var(--disp);font-size:20px;font-weight:700;color:var(--accent);min-width:46px;text-align:right}
+
+/* ── Button row ── */
+.btn-row{display:flex;gap:10px;margin-top:4px}
+.btn{
+  font-family:var(--mono);font-size:11px;font-weight:500;
+  padding:11px 18px;border-radius:8px;cursor:pointer;
+  border:1px solid var(--line);background:var(--bg2);color:var(--txt2);
+  transition:all .15s;flex-shrink:0;
+}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--accent);color:#fff;border-color:var(--accent);flex:1}
+.btn.primary:active{background:#2563EB}
+.btn.danger{color:var(--red);border-color:rgba(239,68,68,.3);background:rgba(239,68,68,.08)}
+.btn.danger:active{background:var(--red);color:#fff}
+
+/* ── Timeline ── */
+.tl-month{
+  font-family:var(--mono);font-size:9px;color:var(--txt3);
+  text-transform:uppercase;letter-spacing:.6px;
+  padding:6px 0 4px;border-bottom:1px solid var(--line);
+  margin-bottom:8px;margin-top:16px;
+}
+.tl-item{
+  display:flex;gap:10px;margin-bottom:10px;cursor:pointer;
+  -webkit-user-select:none;user-select:none;
+}
+.tl-dot-col{display:flex;flex-direction:column;align-items:center;padding-top:3px}
+.tl-dot{
+  width:10px;height:10px;border-radius:50%;flex-shrink:0;
+  border:2px solid var(--bg1);
+}
+.tl-line{flex:1;width:2px;background:var(--line);margin-top:3px}
+.tl-content{flex:1;background:var(--bg1);border:1px solid var(--line);border-radius:8px;padding:10px 12px;transition:background .1s}
+.tl-item:active .tl-content{background:var(--bg2)}
+.tl-name{font-size:12px;font-weight:600;color:var(--txt);line-height:1.3;margin-bottom:4px}
+.tl-meta{font-family:var(--mono);font-size:9px;color:var(--txt3)}
+
+/* ── Empty state ── */
+.empty-state{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:60px 20px;text-align:center;gap:12px;
+}
+.empty-state .ico{font-size:42px;opacity:.3}
+.empty-state h3{font-family:var(--disp);font-size:16px;color:var(--txt2)}
+.empty-state p{font-family:var(--mono);font-size:11px;color:var(--txt3);line-height:1.8}
+
+/* ── Import button ── */
+.import-fab{
+  position:fixed;bottom:calc(var(--nav-h) + var(--safe-bottom) + 16px);
+  right:16px;
+  width:52px;height:52px;border-radius:16px;
+  background:var(--accent);border:none;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  font-size:20px;color:#fff;
+  box-shadow:0 4px 20px rgba(59,130,246,.4);
+  transition:transform .15s;z-index:100;
+}
+.import-fab:active{transform:scale(.92)}
+
+/* ── Toast ── */
+#toast{
+  position:fixed;top:calc(var(--top-h) + var(--safe-top) + 8px);
+  left:50%;transform:translateX(-50%) translateY(-80px);
+  background:var(--bg3);border:1px solid var(--line2);
+  color:var(--txt);font-family:var(--mono);font-size:11px;
+  padding:10px 18px;border-radius:8px;white-space:nowrap;
+  box-shadow:0 8px 32px rgba(0,0,0,.4);
+  transition:transform .25s ease;z-index:9999;pointer-events:none;
+}
+#toast.show{transform:translateX(-50%) translateY(0)}
+#toast.success{border-left:3px solid var(--green)}
+#toast.error{border-left:3px solid var(--red)}
+
+/* ── CP strip ── */
+.cp-strip{
+  background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);
+  border-radius:8px;padding:10px 12px;margin-bottom:14px;
+  font-family:var(--mono);font-size:9px;color:var(--txt3);
+  line-height:1.9;
+}
+.cp-strip strong{color:var(--red);font-size:8px;display:block;margin-bottom:4px;letter-spacing:.8px;text-transform:uppercase}
+
+/* ── SPI ── */
+.spi-row{display:flex;gap:10px;margin-bottom:10px}
+.spi-card{flex:1;background:var(--bg1);border:1px solid var(--line);border-radius:8px;padding:10px 12px;text-align:center}
+.spi-label{font-family:var(--mono);font-size:8px;color:var(--txt3);text-transform:uppercase;letter-spacing:.5px;display:block}
+.spi-val{font-family:var(--disp);font-size:18px;font-weight:700}
+</style>
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+</head>
+<body>
+<div id="app">
+
+<!-- Topbar -->
+<div id="topbar">
+  <div class="logo">⬡ <span>CPM</span></div>
+  <div class="proj-label" id="top-proj">ยังไม่ได้โหลดโปรเจค</div>
+  <div class="data-date" id="top-date" style="display:none"></div>
+  <div class="icon-btn" onclick="openImport()" title="Import JSON">📂</div>
+  <div class="icon-btn" onclick="exportJSON()" title="Export JSON">💾</div>
+  <div class="icon-btn" onclick="openCloudSheet()" title="Cloud Sync" id="cloud-icon-btn">☁</div>
+</div>
+
+<!-- Content -->
+<div id="content">
+
+  <!-- Dashboard -->
+  <div class="view active" id="view-dashboard">
+    <div id="dash-empty" class="empty-state">
+      <div class="ico">📋</div>
+      <h3>ยังไม่มีข้อมูลโปรเจค</h3>
+      <p>กด 📂 เพื่อ Import ไฟล์ JSON<br>ที่ Export จาก CPM Scheduler Desktop</p>
+    </div>
+    <div id="dash-content" style="display:none">
+      <div id="cp-strip-el" class="cp-strip"><strong>★ Critical Path</strong><span id="cp-text">—</span></div>
+      <div class="kpi-grid" id="kpi-grid"></div>
+      <div class="spi-row" id="spi-row"></div>
+      <div class="sec-title">ความคืบหน้าตาม Phase</div>
+      <div id="phase-breakdown"></div>
+    </div>
+  </div>
+
+  <!-- Tasks -->
+  <div class="view" id="view-tasks">
+    <div id="tasks-empty" class="empty-state">
+      <div class="ico">📋</div>
+      <h3>ยังไม่มีข้อมูล</h3>
+      <p>Import โปรเจคก่อน</p>
+    </div>
+    <div id="tasks-content" style="display:none">
+      <div class="chip-row" id="filter-chips"></div>
+      <div id="task-list"></div>
+    </div>
+  </div>
+
+  <!-- Timeline -->
+  <div class="view" id="view-timeline">
+    <div id="tl-empty" class="empty-state">
+      <div class="ico">🗓</div>
+      <h3>ยังไม่มีข้อมูล</h3>
+      <p>Import โปรเจคก่อน</p>
+    </div>
+    <div id="tl-content" style="display:none">
+      <div class="chip-row" id="tl-filter-chips"></div>
+      <div id="tl-list"></div>
+    </div>
+  </div>
+
+  <!-- Settings -->
+  <div class="view" id="view-settings">
+    <div class="sec-title">โปรเจค</div>
+    <div class="card" id="settings-card">
+      <div style="font-family:var(--mono);font-size:11px;color:var(--txt3);line-height:2">
+        <div>ชื่อโปรเจค: <span id="s-name" style="color:var(--txt)">—</span></div>
+        <div>PM: <span id="s-pm" style="color:var(--txt)">—</span></div>
+        <div>วันเริ่ม: <span id="s-start" style="color:var(--txt)">—</span></div>
+        <div>Data Date: <span id="s-data" style="color:var(--gold)">—</span></div>
+        <div>Working Days: <span id="s-wdays" style="color:var(--txt)">—</span> วัน/สัปดาห์</div>
+        <div>จำนวน Tasks: <span id="s-tasks" style="color:var(--accent)">—</span></div>
+        <div>Baselines: <span id="s-bl" style="color:var(--purple)">—</span></div>
+      </div>
+    </div>
+
+    <div class="sec-title">Data Date</div>
+    <div class="card">
+      <div class="form-row">
+        <label>อัปเดต Data Date</label>
+        <input type="date" id="new-data-date">
+      </div>
+      <button class="btn primary" onclick="updateDataDate()">อัปเดต Data Date</button>
+    </div>
+
+    <div class="sec-title">Import / Export</div>
+    <div class="card" style="display:flex;flex-direction:column;gap:10px">
+      <button class="btn" style="width:100%;padding:13px;font-size:12px" onclick="openImport()">📂 Import Project JSON (จาก Desktop)</button>
+      <button class="btn primary" style="width:100%;padding:13px;font-size:12px" onclick="exportJSON()">💾 Export Project JSON (ส่งกลับ Desktop)</button>
+    </div>
+
+    <div class="sec-title">เกี่ยวกับ</div>
+    <div class="card" style="font-family:var(--mono);font-size:10px;color:var(--txt3);line-height:2">
+      <div>CPM Scheduler Mobile <span style="color:var(--accent)">v1.0</span></div>
+      <div>Companion สำหรับ CPM Scheduler Desktop</div>
+      <div>ข้อมูลเก็บใน localStorage ของ browser นี้</div>
+    </div>
+  </div>
+
+</div><!-- /content -->
+
+<!-- Bottom Nav -->
+<div id="bottomnav">
+  <div class="nav-item active" onclick="switchView('dashboard')" id="nav-dashboard">
+    <span class="nav-ico">📊</span>Dashboard
+  </div>
+  <div class="nav-item" onclick="switchView('tasks')" id="nav-tasks">
+    <span class="nav-ico">✅</span>Tasks
+  </div>
+  <div class="nav-item" onclick="switchView('timeline')" id="nav-timeline">
+    <span class="nav-ico">🗓</span>Timeline
+  </div>
+  <div class="nav-item" onclick="switchView('settings')" id="nav-settings">
+    <span class="nav-ico">⚙️</span>Settings
+  </div>
+</div>
+
+</div><!-- /app -->
+
+<!-- Bottom Sheet (Quick Update) -->
+<div id="sheet-overlay" onclick="if(event.target===this)closeSheet()">
+  <div id="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div>
+          <div class="sheet-title" id="sheet-title">งาน</div>
+          <div style="font-family:var(--mono);font-size:9px;color:var(--txt3);margin-top:2px" id="sheet-sub"></div>
+        </div>
+        <div style="flex:1"></div>
+        <div id="sheet-badges" style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end"></div>
+      </div>
+    </div>
+    <div class="sheet-body">
+      <div id="sheet-info" style="background:var(--bg2);border-radius:8px;padding:10px 12px;margin-bottom:16px;font-family:var(--mono);font-size:10px;color:var(--txt3);line-height:2"></div>
+
+      <div class="form-row">
+        <label>% ความคืบหน้า</label>
+      </div>
+      <div class="pct-slider-row">
+        <input type="range" min="0" max="100" step="5" id="sl-pct" oninput="document.getElementById('sl-pct-val').textContent=this.value+'%'">
+        <div class="pct-val" id="sl-pct-val">0%</div>
+      </div>
+      <div style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap">
+        <button class="btn" onclick="setPct(0)" style="padding:5px 10px;font-size:9px">0%</button>
+        <button class="btn" onclick="setPct(25)" style="padding:5px 10px;font-size:9px">25%</button>
+        <button class="btn" onclick="setPct(50)" style="padding:5px 10px;font-size:9px">50%</button>
+        <button class="btn" onclick="setPct(75)" style="padding:5px 10px;font-size:9px">75%</button>
+        <button class="btn" onclick="setPct(100)" style="padding:5px 10px;font-size:9px;background:rgba(34,197,94,.15);color:var(--green);border-color:rgba(34,197,94,.3)">100% ✓</button>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+        <div class="form-row" style="margin-bottom:0">
+          <label>Actual Start</label>
+          <input type="date" id="sl-as">
+        </div>
+        <div class="form-row" style="margin-bottom:0">
+          <label>Actual Finish</label>
+          <input type="date" id="sl-af">
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn" onclick="closeSheet()">ยกเลิก</button>
+        <button class="btn primary" onclick="saveUpdate()">💾 บันทึก</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- Cloud Config Sheet -->
+<div id="cloud-sheet-overlay" onclick="if(event.target===this)closeCloudSheet()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:300;backdrop-filter:blur(2px);align-items:flex-end">
+  <div style="width:100%;max-height:92dvh;background:var(--bg1);border-radius:16px 16px 0 0;border-top:1px solid var(--line2);overflow-y:auto;animation:slideUp .25s ease;padding-bottom:max(20px,var(--safe-bottom))">
+    <div style="width:40px;height:4px;background:var(--line2);border-radius:2px;margin:12px auto 0"></div>
+    <div style="padding:14px 18px 10px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px">
+      <div style="flex:1">
+        <div style="font-family:var(--disp);font-size:15px;font-weight:700;color:var(--txt)">☁ Cloud Sync</div>
+        <div id="sync-badge" style="font-family:var(--mono);font-size:9px;margin-top:3px;padding:2px 8px;border-radius:3px;display:inline-block">☁ Offline</div>
+      </div>
+    </div>
+    <div style="padding:16px 18px">
+      <div style="background:var(--bg2);border-radius:8px;padding:10px 12px;margin-bottom:16px;font-family:var(--mono);font-size:10px;color:var(--txt3);line-height:1.9">
+        <span style="color:var(--accent2)">วิธีใช้:</span> ใส่ Firebase config เดียวกับที่ใช้บน Desktop<br>
+        เปิด Auto-sync → รับข้อมูลจาก Desktop อัตโนมัติ
+      </div>
+      <div class="form-row"><label>Database URL ★</label><input type="text" id="fb-m-dburl" placeholder="https://xxx-default-rtdb.firebaseio.com"></div>
+      <div class="form-row"><label>API Key</label><input type="text" id="fb-m-apikey" placeholder="AIzaSy..."></div>
+      <div class="form-row"><label>Auth Domain</label><input type="text" id="fb-m-authdomain" placeholder="xxx.firebaseapp.com"></div>
+      <div class="form-row"><label>Project ID</label><input type="text" id="fb-m-projid" placeholder="my-firebase-project"></div>
+      <div class="form-row"><label>Sync ID (ต้องตรงกับ Desktop)</label><input type="text" id="fb-m-syncid" placeholder="egat-bb2-substation"></div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
+        <input type="checkbox" id="fb-m-auto" style="width:18px;height:18px;accent-color:var(--accent)">
+        <label for="fb-m-auto" style="font-family:var(--mono);font-size:11px;color:var(--txt2)">Auto-sync (รับข้อมูล Desktop อัตโนมัติ)</label>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn" onclick="closeCloudSheet()" style="flex:none">ปิด</button>
+        <button class="btn primary" onclick="fbConnectMobile()">🔌 Connect</button>
+        <button class="btn" onclick="fbPullMobile()" style="background:rgba(59,130,246,.12);color:var(--accent);border-color:rgba(59,130,246,.3)">⬇ Pull Now</button>
+        <button class="btn" onclick="fbPush().then(()=>{toast('⬆ Push สำเร็จ','success');closeCloudSheet()})" style="background:rgba(34,197,94,.12);color:var(--green);border-color:rgba(34,197,94,.3)">⬆ Push Now</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Import file input -->
+<input type="file" id="file-input" accept=".json" style="display:none" onchange="handleImport(event)">
+<!-- Toast -->
+<div id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════════════════
+let S = { settings:{name:'',pm:'',start:'',dataDate:'',wdays:5}, tasks:[], results:null, baselines:[], activeBL:-1 };
+let currentView = 'dashboard';
+let taskFilter = 'all';
+let tlFilter = 'all';
+let editingTaskIdx = -1;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// DATE UTILS
+// ═══════════════════════════════════════════════════════════════════════════
+function getWdays(){ return parseInt(S.settings.wdays)||5; }
+function isWD(d){
+  const wd=getWdays();
+  if(wd===7) return true;
+  if(wd===6) return d.getDay()>=1&&d.getDay()<=6;
+  return d.getDay()>=1&&d.getDay()<=5;
+}
+function addWD(base,n){
+  if(!base) return base;
+  const d=new Date(base);let added=0;const step=n>=0?1:-1;const abs=Math.abs(n);
+  while(added<abs){d.setDate(d.getDate()+step);if(isWD(d))added++}
+  return d;
+}
+function diffWD(d1,d2){
+  if(!d1||!d2) return 0;
+  let a=new Date(d1),b=new Date(d2),count=0,step=b>=a?1:-1;
+  while(a.toDateString()!==b.toDateString()){a.setDate(a.getDate()+step);if(isWD(a))count+=step;}
+  return count;
+}
+function pd(s){return s?new Date(s+'T00:00:00'):null}
+function ds(d){return d?d.toISOString().split('T')[0]:null}
+function dfShort(d){
+  if(!d) return '—';
+  const dt=typeof d==='string'?pd(d):d;
+  return dt?dt.toLocaleDateString('th',{day:'2-digit',month:'short',year:'2-digit'}):'—';
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PREDECESSOR PARSER
+// ═══════════════════════════════════════════════════════════════════════════
+function parsePreds(raw){
+  if(!raw||!raw.trim()||['—','None','nan'].includes(raw.trim())) return [];
+  const result=[];
+  for(const seg of raw.split('|')){
+    const s=seg.trim();if(!s) continue;
+    const m=s.match(/^(\d+)(FS|SS|FF|SF)?([+-]\d+)?$/i);
+    if(m) result.push({id:parseInt(m[1]),rel:(m[2]||'FS').toUpperCase(),lag:m[3]?parseInt(m[3]):0});
+  }
+  return result;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CPM ENGINE (copied from Desktop)
+// ═══════════════════════════════════════════════════════════════════════════
+function runCPMEngine(tasks,projStart,dataDate){
+  const projStartD=pd(projStart);
+  const dateDateD=pd(dataDate);
+  const acts=tasks.filter(t=>t.dur>0);
+  const byId={};
+  acts.forEach(t=>{byId[t.id]=t;t.ES=0;t.EF=0;t.LS=0;t.LF=0;t.TF=0;t.FF=0});
+  const indeg={};const adj={};
+  acts.forEach(t=>{indeg[t.id]=0;adj[t.id]=[]});
+  acts.forEach(t=>{
+    for(const p of (t.preds||[])){
+      if(!byId[p.id]) continue;
+      adj[p.id].push(t.id);
+      indeg[t.id]=(indeg[t.id]||0)+1;
+    }
+  });
+  const queue=[];const topo=[];
+  acts.forEach(t=>{if((indeg[t.id]||0)===0)queue.push(t.id)});
+  while(queue.length){
+    const id=queue.shift();topo.push(id);
+    for(const nid of (adj[id]||[])){indeg[nid]--;if(indeg[nid]===0)queue.push(nid);}
+  }
+  topo.forEach(id=>{
+    const t=byId[id];
+    const hasActS=!!t.actualStart;const hasActF=!!t.actualFinish;
+    const actSoff=hasActS?diffWD(projStartD,pd(t.actualStart)):null;
+    const actFoff=hasActF?diffWD(projStartD,pd(t.actualFinish)):null;
+    if(hasActS&&hasActF){t.ES=actSoff;t.EF=actFoff;}
+    else if(hasActS){t.ES=actSoff;t.EF=t.ES+t.dur;}
+    else{
+      for(const p of (t.preds||[])){
+        const pred=byId[p.id];if(!pred) continue;
+        const lag=p.lag||0;
+        switch(p.rel){
+          case 'FS':t.ES=Math.max(t.ES,pred.EF+lag);break;
+          case 'SS':t.ES=Math.max(t.ES,pred.ES+lag);break;
+          case 'FF':{const nef=pred.EF+lag;if(nef>t.ES+t.dur)t.ES=nef-t.dur;break;}
+          case 'SF':{const nef=pred.ES+lag;if(nef>t.ES+t.dur)t.ES=nef-t.dur;break;}
+        }
+      }
+      t.ES=Math.max(0,t.ES);t.EF=t.ES+t.dur;
+    }
+  });
+  const projDur=Math.max(...acts.map(t=>t.EF));
+  topo.forEach(t=>{byId[t].LF=projDur});
+  [...topo].reverse().forEach(id=>{
+    const t=byId[id];
+    if(!(adj[id]||[]).length)t.LF=projDur;
+    t.LS=t.LF-t.dur;
+    for(const p of (t.preds||[])){
+      const pred=byId[p.id];if(!pred) continue;
+      const lag=p.lag||0;
+      switch(p.rel){
+        case 'FS':pred.LF=Math.min(pred.LF,t.LS-lag);break;
+        case 'SS':pred.LF=Math.min(pred.LF,t.LS-lag+pred.dur);break;
+        case 'FF':pred.LF=Math.min(pred.LF,t.LF-lag);break;
+        case 'SF':pred.LF=Math.min(pred.LF,t.LF-lag+pred.dur);break;
+      }
+    }
+  });
+  topo.forEach(id=>{const t=byId[id];t.LS=t.LF-t.dur;t.TF=t.LF-t.EF});
+  topo.forEach(id=>{
+    const t=byId[id];let ff=t.TF;
+    for(const sid of (adj[id]||[])){const s=byId[sid];if(!s)continue;ff=Math.min(ff,s.ES-t.EF);}
+    t.FF=Math.max(0,ff);
+  });
+  const todayOff=diffWD(projStartD,dateDateD);
+  const results=[];
+  acts.forEach(t=>{
+    const blStart=addWD(projStartD,t.ES);
+    const blFinish=addWD(projStartD,t.EF);
+    let status='Not Started';
+    const actS=t.actualStart?pd(t.actualStart):null;
+    const actF=t.actualFinish?pd(t.actualFinish):null;
+    if(t.pct===100||actF)status='Complete';
+    else if(t.pct>0||actS)status='In Progress';
+    let forecastFinish;
+    if(status==='Complete')forecastFinish=actF||blFinish;
+    else if(actS){
+      const elapsed=diffWD(actS,dateDateD);
+      const rem=Math.max(0,t.dur-elapsed);
+      forecastFinish=addWD(dateDateD,rem);
+    }else forecastFinish=blFinish;
+    const schedDelay=diffWD(blFinish,forecastFinish);
+    results.push({
+      ...t,critical:t.TF===0,
+      curStart:ds(blStart),curFinish:ds(blFinish),
+      blStart:ds(blStart),blFinish:ds(blFinish),
+      forecastFinish:ds(forecastFinish),
+      schedDelay,status
+    });
+  });
+  // WBS summaries (simplified)
+  const sums={};
+  results.forEach(r=>{
+    const parts=(r.wbs||'').split('.');
+    for(let i=1;i<parts.length;i++){
+      const pw=parts.slice(0,i).join('.');
+      if(!sums[pw])sums[pw]={pctSum:0,pctCount:0,anyCrit:false,maxDelay:0};
+      sums[pw].pctSum+=r.pct;sums[pw].pctCount++;
+      if(r.critical)sums[pw].anyCrit=true;
+      sums[pw].maxDelay=Math.max(sums[pw].maxDelay,r.schedDelay);
+    }
+  });
+  Object.keys(sums).forEach(w=>{const s=sums[w];s.pct=s.pctCount?Math.round(s.pctSum/s.pctCount):0;});
+  return{results,summaries:sums,projDur,projStartD,dateDateD,topo};
+}
+
+function runCPM(){
+  if(!S.tasks.length) return;
+  const acts=S.tasks.map(t=>({...t,preds:parsePreds(t.predecessors)}));
+  S.results=runCPMEngine(acts,S.settings.start,S.settings.dataDate);
+  const rMap={};S.results.results.forEach(r=>rMap[r.id]=r);
+  S.tasks.forEach(t=>{if(rMap[t.id]){t.TF=rMap[t.id].TF;t.status=rMap[t.id].status;}});
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// STORAGE
+// ═══════════════════════════════════════════════════════════════════════════
+function save(){
+  try{ localStorage.setItem('cpm_mobile_project', JSON.stringify({settings:S.settings,tasks:S.tasks,baselines:S.baselines,activeBL:S.activeBL})); }catch(e){}
+}
+function load(){
+  try{
+    const raw=localStorage.getItem('cpm_mobile_project');
+    if(!raw) return false;
+    const p=JSON.parse(raw);
+    S.settings={...S.settings,...p.settings};
+    S.tasks=p.tasks||[];
+    S.baselines=p.baselines||[];
+    S.activeBL=p.activeBL??-1;
+    return true;
+  }catch(e){return false;}
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// IMPORT / EXPORT
+// ═══════════════════════════════════════════════════════════════════════════
+function openImport(){ document.getElementById('file-input').click(); }
+function handleImport(e){
+  const file=e.target.files[0];if(!file) return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    try{
+      const p=JSON.parse(ev.target.result);
+      S.settings={...S.settings,...(p.settings||{})};
+      S.tasks=p.tasks||[];
+      S.baselines=p.baselines||[];
+      S.activeBL=p.activeBL??-1;
+      runCPM(); save(); refreshAll();
+      toast(`โหลดแล้ว: ${S.settings.name}`,'success');
+    }catch(err){ toast('ไฟล์ไม่ถูกต้อง','error'); }
+    e.target.value='';
+  };
+  reader.readAsText(file);
+}
+function exportJSON(){
+  if(!S.tasks.length){toast('ไม่มีข้อมูล','error');return;}
+  const data=JSON.stringify({settings:S.settings,tasks:S.tasks,baselines:S.baselines,activeBL:S.activeBL});
+  const blob=new Blob([data],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=(S.settings.name||'project').replace(/\s+/g,'_')+'_project.json';
+  a.click();
+  toast('Export สำเร็จ','success');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════════════════════════════════════
+function switchView(v){
+  currentView=v;
+  document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
+  document.getElementById('view-'+v).classList.add('active');
+  document.getElementById('nav-'+v).classList.add('active');
+  if(v==='dashboard') renderDashboard();
+  if(v==='tasks') renderTasks();
+  if(v==='timeline') renderTimeline();
+  if(v==='settings') renderSettings();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// REFRESH ALL
+// ═══════════════════════════════════════════════════════════════════════════
+function refreshAll(){
+  updateTopbar();
+  if(currentView==='dashboard') renderDashboard();
+  else if(currentView==='tasks') renderTasks();
+  else if(currentView==='timeline') renderTimeline();
+  else if(currentView==='settings') renderSettings();
+}
+function updateTopbar(){
+  document.getElementById('top-proj').textContent = S.settings.name||'ยังไม่ได้โหลดโปรเจค';
+  const dd=document.getElementById('top-date');
+  if(S.settings.dataDate){
+    dd.textContent='DD: '+S.settings.dataDate;
+    dd.style.display='block';
+  } else dd.style.display='none';
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════════════════════════════════════════════
+function renderDashboard(){
+  const hasData=S.tasks.length&&S.results;
+  document.getElementById('dash-empty').style.display=hasData?'none':'flex';
+  document.getElementById('dash-content').style.display=hasData?'block':'none';
+  if(!hasData) return;
+
+  const {results,projDur,projStartD,dateDateD,topo}=S.results;
+  const projFinish=addWD(projStartD,projDur);
+  const total=results.length;
+  const done=results.filter(r=>r.pct===100).length;
+  const inprog=results.filter(r=>r.pct>0&&r.pct<100).length;
+  const delayed=results.filter(r=>r.schedDelay>0).length;
+  const crit=results.filter(r=>r.critical).length;
+  const avgPct=Math.round(results.reduce((s,r)=>s+r.pct,0)/total);
+  const daysIn=diffWD(projStartD,dateDateD);
+  const plannedPct=Math.round(Math.min(100,daysIn/projDur*100));
+  const spi=(avgPct/(plannedPct||1)).toFixed(2);
+  const svar=avgPct-plannedPct;
+
+  document.getElementById('kpi-grid').innerHTML=`
+    <div class="kpi-card accent"><div class="kpi-label">Total Tasks</div><div class="kpi-val">${total}</div><div class="kpi-sub">activities</div></div>
+    <div class="kpi-card green"><div class="kpi-label">Complete</div><div class="kpi-val">${done}</div><div class="kpi-sub">${Math.round(done/total*100)}%</div></div>
+    <div class="kpi-card amber"><div class="kpi-label">In Progress</div><div class="kpi-val">${inprog}</div><div class="kpi-sub">กำลังทำ</div></div>
+    <div class="kpi-card red"><div class="kpi-label">Delayed</div><div class="kpi-val">${delayed}</div><div class="kpi-sub">ล่าช้า</div></div>
+    <div class="kpi-card gold"><div class="kpi-label">Critical</div><div class="kpi-val">${crit}</div><div class="kpi-sub">critical path</div></div>
+    <div class="kpi-card purple"><div class="kpi-label">Est. Finish</div><div class="kpi-val" style="font-size:13px">${dfShort(projFinish)}</div><div class="kpi-sub">${projDur} วันทำงาน</div></div>
+  `;
+
+  const spiColor=spi>=1?'var(--green)':'var(--red)';
+  const svarColor=svar>=0?'var(--green)':'var(--red)';
+  document.getElementById('spi-row').innerHTML=`
+    <div class="spi-card"><span class="spi-label">Planned %</span><span class="spi-val" style="color:var(--txt2)">${plannedPct}%</span></div>
+    <div class="spi-card"><span class="spi-label">Actual %</span><span class="spi-val" style="color:${svar>=0?'var(--green)':'var(--amber)'}">${avgPct}%</span></div>
+    <div class="spi-card"><span class="spi-label">SPI</span><span class="spi-val" style="color:${spiColor}">${spi}</span></div>
+    <div class="spi-card"><span class="spi-label">Variance</span><span class="spi-val" style="color:${svarColor};font-size:15px">${svar>=0?'+':''}${svar}%</span></div>
+  `;
+
+  const cpIds=topo.filter(id=>results.find(r=>r.id===id&&r.critical));
+  const cpNames=cpIds.map(id=>{const r=results.find(r=>r.id===id);return r?`<span style="color:var(--red)">${r.id}</span>`:''});
+  document.getElementById('cp-text').innerHTML=cpNames.join(' <span style="color:var(--txt3)">→</span> ')||'—';
+
+  // Phase breakdown
+  const phaseMap={};
+  S.tasks.filter(t=>t.wbs&&t.wbs.split('.').length===1&&t.dur===0).forEach(t=>{
+    phaseMap[t.wbs]=t.name||t.phase||('Phase '+t.wbs);
+  });
+  const l1groups={};
+  results.forEach(r=>{
+    const l1=(r.wbs||'').split('.')[0]||'?';
+    if(!l1groups[l1])l1groups[l1]={tasks:[],name:phaseMap[l1]||('Phase '+l1)};
+    l1groups[l1].tasks.push(r);
+  });
+  const phHtml=Object.entries(l1groups).map(([k,v])=>{
+    const pct=Math.round(v.tasks.reduce((a,t)=>a+t.pct,0)/v.tasks.length);
+    const dl=v.tasks.filter(t=>t.schedDelay>0).length;
+    const pctColor=pct===100?'var(--green)':pct>0?'var(--accent)':'var(--line2)';
+    return `<div class="card" style="margin-bottom:8px;padding:12px 14px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+        <div style="font-family:var(--mono);font-size:9px;color:var(--txt3)">${k}</div>
+        <div style="font-size:12px;font-weight:600;color:var(--txt);flex:1">${v.name}</div>
+        <div style="font-family:var(--mono);font-size:11px;font-weight:700;color:${pctColor}">${pct}%</div>
+        ${dl?`<span class="badge red">+${dl}d</span>`:'<span class="badge green">✓</span>'}
+      </div>
+      <div class="prog-track"><div class="prog-fill" style="width:${pct}%;background:${pctColor}"></div></div>
+    </div>`;
+  }).join('');
+  document.getElementById('phase-breakdown').innerHTML=phHtml;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TASKS VIEW
+// ═══════════════════════════════════════════════════════════════════════════
+function renderTasks(){
+  const hasData=S.tasks.length&&S.results;
+  document.getElementById('tasks-empty').style.display=hasData?'none':'flex';
+  document.getElementById('tasks-content').style.display=hasData?'block':'none';
+  if(!hasData) return;
+
+  const filters=[
+    {id:'all',label:'ทั้งหมด'},
+    {id:'inprog',label:'🔄 กำลังทำ'},
+    {id:'notstart',label:'⏳ ยังไม่เริ่ม'},
+    {id:'done',label:'✅ เสร็จแล้ว'},
+    {id:'delay',label:'⚠️ ล่าช้า'},
+    {id:'critical',label:'🔴 Critical'},
+  ];
+  document.getElementById('filter-chips').innerHTML=filters.map(f=>
+    `<div class="chip${taskFilter===f.id?' active':''}" onclick="setTaskFilter('${f.id}')">${f.label}</div>`
+  ).join('');
+
+  const rMap={};S.results.results.forEach(r=>rMap[r.id]=r);
+  let list=S.tasks.filter(t=>t.dur>0);
+  if(taskFilter==='inprog') list=list.filter(t=>rMap[t.id]?.status==='In Progress');
+  else if(taskFilter==='notstart') list=list.filter(t=>rMap[t.id]?.status==='Not Started');
+  else if(taskFilter==='done') list=list.filter(t=>rMap[t.id]?.status==='Complete');
+  else if(taskFilter==='delay') list=list.filter(t=>rMap[t.id]?.schedDelay>0);
+  else if(taskFilter==='critical') list=list.filter(t=>rMap[t.id]?.critical);
+
+  document.getElementById('task-list').innerHTML=list.map(t=>{
+    const r=rMap[t.id];if(!r) return '';
+    const cls=r.pct===100?'done':r.critical?'crit':r.schedDelay>0?'delay':r.pct>0?'inprog':'';
+    const statusBadge=r.pct===100?'<span class="badge green">✓ Done</span>':r.pct>0?'<span class="badge blue">In Progress</span>':'<span class="badge grey">Not Started</span>';
+    const critBadge=r.critical?'<span class="badge crit">CP</span>':'';
+    const delayBadge=r.schedDelay>0?`<span class="badge amber">+${r.schedDelay}d</span>`:'';
+    const idx=S.tasks.indexOf(t);
+    return `<div class="task-card ${cls}" onclick="openSheet(${idx})">
+      <div class="task-card-top">
+        <div>
+          <div style="font-family:var(--mono);font-size:9px;color:var(--txt3);margin-bottom:3px">${t.wbs||''} · ID ${t.id}</div>
+          <div class="task-card-name">${t.name||''}</div>
+        </div>
+        <div style="font-family:var(--disp);font-size:18px;font-weight:700;color:${r.pct===100?'var(--green)':r.pct>0?'var(--accent)':'var(--txt3)'};flex-shrink:0">${r.pct}%</div>
+      </div>
+      <div class="task-card-meta">${statusBadge}${critBadge}${delayBadge}
+        <span class="badge grey">${t.phase||''}</span>
+      </div>
+      <div class="task-card-dates">
+        ES: ${dfShort(r.curStart)} → EF: ${dfShort(r.curFinish)}
+        ${t.actualStart?` · Act.S: <span style="color:var(--green)">${dfShort(t.actualStart)}</span>`:''}
+      </div>
+      <div class="task-pct-bar">
+        <div class="prog-track"><div class="prog-fill" style="width:${r.pct}%;background:${r.pct===100?'var(--green)':r.critical?'var(--red)':'var(--accent)'}"></div></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+function setTaskFilter(f){ taskFilter=f; renderTasks(); }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TIMELINE VIEW
+// ═══════════════════════════════════════════════════════════════════════════
+function renderTimeline(){
+  const hasData=S.tasks.length&&S.results;
+  document.getElementById('tl-empty').style.display=hasData?'none':'flex';
+  document.getElementById('tl-content').style.display=hasData?'block':'none';
+  if(!hasData) return;
+
+  const tl_filters=[
+    {id:'all',label:'ทั้งหมด'},
+    {id:'active',label:'🔄 Active'},
+    {id:'upcoming',label:'📅 Upcoming'},
+    {id:'critical',label:'🔴 Critical'},
+  ];
+  document.getElementById('tl-filter-chips').innerHTML=tl_filters.map(f=>
+    `<div class="chip${tlFilter===f.id?' active':''}" onclick="setTlFilter('${f.id}')">${f.label}</div>`
+  ).join('');
+
+  const rMap={};S.results.results.forEach(r=>rMap[r.id]=r);
+  const dd=pd(S.settings.dataDate);
+
+  let list=S.tasks.filter(t=>t.dur>0&&rMap[t.id]);
+  if(tlFilter==='active') list=list.filter(t=>rMap[t.id].status==='In Progress');
+  else if(tlFilter==='upcoming') list=list.filter(t=>rMap[t.id].status==='Not Started'&&pd(rMap[t.id].curStart)>=dd);
+  else if(tlFilter==='critical') list=list.filter(t=>rMap[t.id].critical);
+
+  // Sort by curStart
+  list=[...list].sort((a,b)=>{
+    const ra=rMap[a.id],rb=rMap[b.id];
+    return (ra.curStart||'').localeCompare(rb.curStart||'');
+  });
+
+  // Group by month
+  const byMonth={};
+  const monthOrder=[];
+  list.forEach(t=>{
+    const r=rMap[t.id];
+    const d=pd(r.curStart);
+    if(!d) return;
+    const key=d.toLocaleDateString('th',{month:'long',year:'numeric'});
+    if(!byMonth[key]){byMonth[key]=[];monthOrder.push(key);}
+    byMonth[key].push(t);
+  });
+
+  let html='';
+  monthOrder.forEach((month,mi)=>{
+    html+=`<div class="tl-month">${month}</div>`;
+    byMonth[month].forEach((t,ti)=>{
+      const r=rMap[t.id];
+      const isLast=ti===byMonth[month].length-1&&mi===monthOrder.length-1;
+      const dotColor=r.pct===100?'var(--green)':r.critical?'var(--red)':r.schedDelay>0?'var(--amber)':r.pct>0?'var(--accent)':'var(--txt3)';
+      const idx=S.tasks.indexOf(t);
+      html+=`<div class="tl-item" onclick="openSheet(${idx})">
+        <div class="tl-dot-col">
+          <div class="tl-dot" style="background:${dotColor}"></div>
+          ${!isLast?`<div class="tl-line"></div>`:''}
+        </div>
+        <div class="tl-content">
+          <div style="display:flex;align-items:flex-start;gap:6px;margin-bottom:4px">
+            <div class="tl-name" style="flex:1">${t.name||''}</div>
+            <div style="font-family:var(--disp);font-size:14px;font-weight:700;color:${dotColor};flex-shrink:0">${r.pct}%</div>
+          </div>
+          <div class="tl-meta">
+            ${dfShort(r.curStart)} → ${dfShort(r.curFinish)} · ${t.dur}d
+            ${r.schedDelay>0?`<span style="color:var(--amber)"> · +${r.schedDelay}d ล่าช้า</span>`:''}
+          </div>
+          <div style="margin-top:6px">
+            <div class="prog-track" style="height:3px"><div class="prog-fill" style="width:${r.pct}%;background:${dotColor}"></div></div>
+          </div>
+        </div>
+      </div>`;
+    });
+  });
+  if(!html) html=`<div class="empty-state" style="padding-top:40px"><div class="ico">🔍</div><p style="font-family:var(--mono);font-size:11px;color:var(--txt3)">ไม่พบงานในเงื่อนไขนี้</p></div>`;
+  document.getElementById('tl-list').innerHTML=html;
+}
+function setTlFilter(f){ tlFilter=f; renderTimeline(); }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SETTINGS
+// ═══════════════════════════════════════════════════════════════════════════
+function renderSettings(){
+  document.getElementById('s-name').textContent=S.settings.name||'—';
+  document.getElementById('s-pm').textContent=S.settings.pm||'—';
+  document.getElementById('s-start').textContent=dfShort(pd(S.settings.start))||'—';
+  document.getElementById('s-data').textContent=S.settings.dataDate||'—';
+  document.getElementById('s-wdays').textContent=S.settings.wdays||5;
+  document.getElementById('s-tasks').textContent=S.tasks.filter(t=>t.dur>0).length+' activities, '+S.tasks.filter(t=>t.dur===0).length+' summaries';
+  document.getElementById('s-bl').textContent=S.baselines.length+' baseline(s)';
+  if(S.settings.dataDate) document.getElementById('new-data-date').value=S.settings.dataDate;
+}
+function updateDataDate(){
+  const val=document.getElementById('new-data-date').value;
+  if(!val){toast('เลือกวันที่ก่อน','error');return;}
+  S.settings.dataDate=val;
+  runCPM(); save(); refreshAll();
+  toast('Data Date อัปเดตแล้ว: '+val,'success');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// BOTTOM SHEET (Quick Update)
+// ═══════════════════════════════════════════════════════════════════════════
+function openSheet(idx){
+  editingTaskIdx=idx;
+  const t=S.tasks[idx];
+  const rMap={};(S.results?.results||[]).forEach(r=>rMap[r.id]=r);
+  const r=rMap[t.id];
+
+  document.getElementById('sheet-title').textContent=t.name||'งาน';
+  document.getElementById('sheet-sub').textContent=`${t.wbs||''} · ID ${t.id} · ${t.dur}d · ${t.phase||''}`;
+
+  const critBadge=r?.critical?'<span class="badge crit">CP</span>':'';
+  const delayBadge=r?.schedDelay>0?`<span class="badge amber">+${r.schedDelay}d</span>`:'';
+  const phaseBadge=`<span class="badge grey">${t.phase||''}</span>`;
+  document.getElementById('sheet-badges').innerHTML=critBadge+delayBadge+phaseBadge;
+
+  document.getElementById('sheet-info').innerHTML=`
+    <span style="color:var(--accent2)">ES/EF:</span> ${dfShort(r?.curStart)} → ${dfShort(r?.curFinish)}<br>
+    <span style="color:var(--txt3)">TF:</span> ${r?.TF??'—'}d &nbsp;|&nbsp; <span style="color:var(--txt3)">Delay:</span> ${r?.schedDelay>0?`<span style="color:var(--amber)">+${r.schedDelay}d</span>`:'<span style="color:var(--green)">On track</span>'}<br>
+    ${t.predecessors?`<span style="color:var(--txt3)">Pred:</span> ${t.predecessors}<br>`:''}
+    <span style="color:var(--txt3)">Resource:</span> ${t.resource||'—'}
+  `;
+
+  const pct=t.pct||0;
+  document.getElementById('sl-pct').value=pct;
+  document.getElementById('sl-pct-val').textContent=pct+'%';
+  document.getElementById('sl-as').value=t.actualStart||'';
+  document.getElementById('sl-af').value=t.actualFinish||'';
+
+  document.getElementById('sheet-overlay').classList.add('open');
+  document.body.style.overflow='hidden';
+}
+function closeSheet(){
+  document.getElementById('sheet-overlay').classList.remove('open');
+  document.body.style.overflow='';
+  editingTaskIdx=-1;
+}
+function setPct(v){
+  document.getElementById('sl-pct').value=v;
+  document.getElementById('sl-pct-val').textContent=v+'%';
+  // auto-set actual start if setting >0 and no actual start yet
+  if(v>0 && !document.getElementById('sl-as').value && S.settings.dataDate){
+    document.getElementById('sl-as').value=S.settings.dataDate;
+  }
+  if(v===100 && !document.getElementById('sl-af').value && S.settings.dataDate){
+    document.getElementById('sl-af').value=S.settings.dataDate;
+  }
+}
+function saveUpdate(){
+  if(editingTaskIdx<0) return;
+  const t=S.tasks[editingTaskIdx];
+  const newPct=Math.max(0,Math.min(100,parseInt(document.getElementById('sl-pct').value)||0));
+  const newAs=document.getElementById('sl-as').value||null;
+  const newAf=document.getElementById('sl-af').value||null;
+  t.pct=newPct;
+  t.actualStart=newAs;
+  t.actualFinish=newAf;
+  if(newPct===100&&!t.actualFinish) t.actualFinish=S.settings.dataDate;
+  runCPM(); save();
+  if(FB.configured) fbPush(true);
+  closeSheet();
+  if(currentView==='tasks') renderTasks();
+  else if(currentView==='timeline') renderTimeline();
+  else if(currentView==='dashboard') renderDashboard();
+  toast(`บันทึกแล้ว: ${t.name}`,'success');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════════════════════════════════════
+function toast(msg,type='success'){
+  const el=document.getElementById('toast');
+  el.textContent=msg;el.className='show '+(type||'');
+  clearTimeout(el._t);el._t=setTimeout(()=>el.className='',2800);
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// FIREBASE CLOUD SYNC
+// ═══════════════════════════════════════════════════════════════════════════════
+let FB = {
+  app: null, db: null,
+  configured: false,
+  syncId: '',
+  autoSync: false,
+  listener: null,
+  lastPushHash: ''
+};
+
+// Load FB config from localStorage
+function fbLoadConfig(){
+  try{
+    const c = localStorage.getItem('cpm_fb_config');
+    if(c){ const cfg = JSON.parse(c); FB.syncId = cfg.syncId||''; return cfg; }
+  }catch(e){}
+  return null;
+}
+
+// Initialise Firebase app
+function fbInit(cfg){
+  try{
+    if(FB.app) FB.app.delete().catch(()=>{});
+    FB.app = firebase.initializeApp({
+      apiKey:            cfg.apiKey,
+      authDomain:        cfg.authDomain,
+      databaseURL:       cfg.databaseURL,
+      projectId:         cfg.projectId,
+      storageBucket:     cfg.storageBucket||'',
+      messagingSenderId: cfg.messagingSenderId||'',
+      appId:             cfg.appId||''
+    }, 'cpm_'+Date.now());
+    FB.db = firebase.database(FB.app);
+    FB.configured = true;
+    FB.syncId = cfg.syncId||'default';
+    cfg.autoSync = (typeof FB_PLATFORM!=='undefined' && FB.autoSync);
+    localStorage.setItem('cpm_fb_config', JSON.stringify(cfg));
+    updateCloudBadge();
+    return true;
+  }catch(e){ console.error('FB init error',e); return false; }
+}
+
+function fbRef(){ return FB.db.ref('cpm_projects/'+FB.syncId); }
+
+// Serialise project to a plain object
+function fbSerialise(source){
+  return {
+    settings: source.settings||S.settings,
+    tasks:    source.tasks||S.tasks,
+    baselines:source.baselines||S.baselines,
+    activeBL: source.activeBL!=null?source.activeBL:S.activeBL,
+    meta:{
+      lastUpdated: new Date().toISOString(),
+      updatedBy:   FB_PLATFORM,
+      projectName: (source.settings||S.settings).name||''
+    }
+  };
+}
+
+// PUSH current project to Firebase
+async function fbPush(silent){
+  if(!FB.configured||!FB.syncId){ if(!silent) toast('ยังไม่ได้ตั้งค่า Firebase','error'); return; }
+  try{
+    const data = fbSerialise({});
+    const hash = JSON.stringify({tasks:data.tasks,settings:data.settings}).length+'|'+data.tasks.length;
+    await fbRef().set(data);
+    FB.lastPushHash = hash;
+    if(!silent) toast('☁ Push สำเร็จ: '+FB.syncId,'success');
+    updateCloudBadge('ok');
+  }catch(e){ console.error(e); if(!silent) toast('Push ล้มเหลว: '+e.message,'error'); updateCloudBadge('err'); }
+}
+
+// PULL project from Firebase
+async function fbPull(silent){
+  if(!FB.configured||!FB.syncId){ if(!silent) toast('ยังไม่ได้ตั้งค่า Firebase','error'); return null; }
+  try{
+    const snap = await fbRef().once('value');
+    const data = snap.val();
+    if(!data){ if(!silent) toast('ไม่พบข้อมูลบน Cloud สำหรับ ID: '+FB.syncId,'error'); return null; }
+    return data;
+  }catch(e){ console.error(e); if(!silent) toast('Pull ล้มเหลว: '+e.message,'error'); updateCloudBadge('err'); return null; }
+}
+
+// Apply pulled data into S and refresh
+function fbApplyData(data, label){
+  S.settings  = {...S.settings,...data.settings};
+  S.tasks     = data.tasks||[];
+  S.baselines = data.baselines||[];
+  S.activeBL  = data.activeBL??-1;
+}
+
+// START real-time listener (auto-sync)
+function fbStartListen(){
+  if(!FB.configured||!FB.syncId) return;
+  fbStopListen();
+  FB.listener = fbRef().on('value', snap=>{
+    const data = snap.val(); if(!data) return;
+    // Skip if we just pushed this exact data
+    const hash = JSON.stringify({tasks:data.tasks,settings:data.settings}).length+'|'+(data.tasks||[]).length;
+    if(hash === FB.lastPushHash) return;
+    // Check source – don't apply own platform's push back
+    if(data.meta && data.meta.updatedBy === FB_PLATFORM) return;
+    fbApplyData(data, data.meta?.updatedBy||'remote');
+    onFbRemoteUpdate(data);
+    updateCloudBadge('live');
+  }, e=>{ console.error('FB listener error',e); updateCloudBadge('err'); });
+  FB.autoSync = true;
+  updateCloudBadge('live');
+}
+
+function fbStopListen(){
+  if(FB.listener && FB.db){ fbRef().off('value', FB.listener); FB.listener=null; }
+  FB.autoSync = false;
+  updateCloudBadge(FB.configured?'ok':'off');
+}
+
+
+const FB_PLATFORM = 'mobile';
+
+// Called when remote update arrives on mobile
+function onFbRemoteUpdate(data){
+  runCPM(); save();
+  updateTopbar();
+  if(currentView==='dashboard') renderDashboard();
+  else if(currentView==='tasks') renderTasks();
+  else if(currentView==='timeline') renderTimeline();
+  else if(currentView==='settings') renderSettings();
+  showSyncBadge('live', '🟢 ได้รับข้อมูลจาก Desktop');
+}
+
+function updateCloudBadge(state){
+  const badge = document.getElementById('sync-badge');
+  if(!badge) return;
+  const map = {
+    ok:  {bg:'rgba(59,130,246,.2)', color:'#93C5FD', txt:'☁ Connected'},
+    live:{bg:'rgba(34,197,94,.2)',  color:'#86EFAC', txt:'🟢 Live'},
+    err: {bg:'rgba(239,68,68,.2)',  color:'#FCA5A5', txt:'🔴 Error'},
+    off: {bg:'transparent',         color:'var(--txt3)', txt:'☁ Offline'}
+  };
+  const s = state||(FB.autoSync?'live':FB.configured?'ok':'off');
+  const m = map[s]||map.off;
+  badge.style.background = m.bg;
+  badge.style.color = m.color;
+  badge.textContent = m.txt;
+}
+
+function showSyncBadge(state, msg){
+  updateCloudBadge(state);
+  toast(msg||'Synced','success');
+}
+
+// ── Cloud Config Sheet ──
+function openCloudSheet(){
+  const cfg = fbLoadConfig()||{};
+  document.getElementById('fb-m-dburl').value = cfg.databaseURL||'';
+  document.getElementById('fb-m-apikey').value = cfg.apiKey||'';
+  document.getElementById('fb-m-projid').value = cfg.projectId||'';
+  document.getElementById('fb-m-authdomain').value = cfg.authDomain||'';
+  document.getElementById('fb-m-syncid').value = cfg.syncId||FB.syncId||'';
+  document.getElementById('fb-m-auto').checked = FB.autoSync;
+  const cso=document.getElementById('cloud-sheet-overlay');
+  cso.style.display='flex';
+  setTimeout(()=>cso.classList.add('open'),10);
+  document.body.style.overflow='hidden';
+}
+function closeCloudSheet(){
+  const cso2=document.getElementById('cloud-sheet-overlay');
+  cso2.classList.remove('open');
+  setTimeout(()=>{cso2.style.display='none';},260);
+  document.body.style.overflow='';
+}
+function fbConnectMobile(){
+  const cfg = {
+    apiKey:      document.getElementById('fb-m-apikey').value.trim(),
+    authDomain:  document.getElementById('fb-m-authdomain').value.trim(),
+    databaseURL: document.getElementById('fb-m-dburl').value.trim(),
+    projectId:   document.getElementById('fb-m-projid').value.trim(),
+    syncId:      document.getElementById('fb-m-syncid').value.trim().replace(/[^a-zA-Z0-9\-_]/g,'')||'default'
+  };
+  if(!cfg.databaseURL){ toast('ใส่ Database URL ก่อน','error'); return; }
+  if(!fbInit(cfg)){ toast('เชื่อมต่อไม่ได้','error'); return; }
+  const autoOn = document.getElementById('fb-m-auto').checked;
+  if(autoOn) fbStartListen(); else fbStopListen();
+  closeCloudSheet();
+  toast('🔌 เชื่อมต่อแล้ว · '+FB.syncId,'success');
+}
+async function fbPullMobile(){
+  const data = await fbPull();
+  if(!data) return;
+  fbApplyData(data);
+  runCPM(); save(); refreshAll();
+  toast('⬇ Pull สำเร็จ','success');
+  closeCloudSheet();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════════════════
+(function init(){
+  if(load()&&S.tasks.length){
+    runCPM();
+  }
+  updateTopbar();
+  renderDashboard();
+  // Restore Firebase config
+  const fbCfg = fbLoadConfig();
+  if(fbCfg && fbCfg.databaseURL){
+    fbInit(fbCfg);
+    if(fbCfg.autoSync !== false) fbStartListen();
+  }
+  updateCloudBadge();
+})();
+</script>
+</body>
+</html>

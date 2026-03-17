@@ -433,6 +433,16 @@ tbody td.name-col{color:var(--txt);max-width:280px;overflow:hidden;text-overflow
   #panel-gantt{display:flex!important}
 }
 
+
+/* ── Cloud sync badge ── */
+#btn-cloud{
+  font-family:var(--mono);font-size:11px;font-weight:500;
+  padding:6px 12px;border-radius:4px;cursor:pointer;
+  border:1px solid var(--line2);background:transparent;
+  color:var(--txt2);transition:all .2s;white-space:nowrap;
+}
+#btn-cloud:hover{color:var(--txt);border-color:var(--accent)}
+
 /* ── Animations ── */
 @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 .panel.active > *{animation:fadeIn .2s ease forwards}
@@ -440,6 +450,9 @@ tbody td.name-col{color:var(--txt);max-width:280px;overflow:hidden;text-overflow
 
 <!-- PWA -->
 
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 </head>
 <body>
 <div id="app">
@@ -454,6 +467,7 @@ tbody td.name-col{color:var(--txt);max-width:280px;overflow:hidden;text-overflow
   <button class="top-btn" id="btn-undo" onclick="undo()" style="opacity:.4" disabled title="Nothing to undo">↩ Undo</button>
   <button class="top-btn primary" onclick="runCPM()">▶ Calculate CPM</button>
   <button class="top-btn" onclick="setBaseline()" style="background:rgba(22,163,74,.1);color:var(--green);border-color:rgba(22,163,74,.4)">📌 Set Baseline</button>
+  <button id="btn-cloud" onclick="openCloudModal()">☁ Cloud</button>
 </div>
 
 <!-- Tabs -->
@@ -2311,6 +2325,7 @@ function exportExcel(){
 // ═══════════════════════════════════════════════════════════════════════════════
 function saveToStorage(){
   try{ localStorage.setItem('cpm_project',JSON.stringify({settings:S.settings,tasks:S.tasks,baselines:S.baselines,activeBL:S.activeBL})); }catch(e){}
+  fbAutoHook();
 }
 function loadFromStorage(){
   try{
@@ -2418,6 +2433,214 @@ function loadSample(){
   toast('EGAT sample data loaded — click ▶ Calculate CPM','success');
 }
 
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// FIREBASE CLOUD SYNC
+// ═══════════════════════════════════════════════════════════════════════════════
+let FB = {
+  app: null, db: null,
+  configured: false,
+  syncId: '',
+  autoSync: false,
+  listener: null,
+  lastPushHash: ''
+};
+
+// Load FB config from localStorage
+function fbLoadConfig(){
+  try{
+    const c = localStorage.getItem('cpm_fb_config');
+    if(c){ const cfg = JSON.parse(c); FB.syncId = cfg.syncId||''; return cfg; }
+  }catch(e){}
+  return null;
+}
+
+// Initialise Firebase app
+function fbInit(cfg){
+  try{
+    if(FB.app) FB.app.delete().catch(()=>{});
+    FB.app = firebase.initializeApp({
+      apiKey:            cfg.apiKey,
+      authDomain:        cfg.authDomain,
+      databaseURL:       cfg.databaseURL,
+      projectId:         cfg.projectId,
+      storageBucket:     cfg.storageBucket||'',
+      messagingSenderId: cfg.messagingSenderId||'',
+      appId:             cfg.appId||''
+    }, 'cpm_'+Date.now());
+    FB.db = firebase.database(FB.app);
+    FB.configured = true;
+    FB.syncId = cfg.syncId||'default';
+    localStorage.setItem('cpm_fb_config', JSON.stringify(cfg));
+    updateCloudBadge();
+    return true;
+  }catch(e){ console.error('FB init error',e); return false; }
+}
+
+function fbRef(){ return FB.db.ref('cpm_projects/'+FB.syncId); }
+
+// Serialise project to a plain object
+function fbSerialise(source){
+  return {
+    settings: source.settings||S.settings,
+    tasks:    source.tasks||S.tasks,
+    baselines:source.baselines||S.baselines,
+    activeBL: source.activeBL!=null?source.activeBL:S.activeBL,
+    meta:{
+      lastUpdated: new Date().toISOString(),
+      updatedBy:   FB_PLATFORM,
+      projectName: (source.settings||S.settings).name||''
+    }
+  };
+}
+
+// PUSH current project to Firebase
+async function fbPush(silent){
+  if(!FB.configured||!FB.syncId){ if(!silent) toast('ยังไม่ได้ตั้งค่า Firebase','error'); return; }
+  try{
+    const data = fbSerialise({});
+    const hash = JSON.stringify({tasks:data.tasks,settings:data.settings}).length+'|'+data.tasks.length;
+    await fbRef().set(data);
+    FB.lastPushHash = hash;
+    if(!silent) toast('☁ Push สำเร็จ: '+FB.syncId,'success');
+    updateCloudBadge('ok');
+  }catch(e){ console.error(e); if(!silent) toast('Push ล้มเหลว: '+e.message,'error'); updateCloudBadge('err'); }
+}
+
+// PULL project from Firebase
+async function fbPull(silent){
+  if(!FB.configured||!FB.syncId){ if(!silent) toast('ยังไม่ได้ตั้งค่า Firebase','error'); return null; }
+  try{
+    const snap = await fbRef().once('value');
+    const data = snap.val();
+    if(!data){ if(!silent) toast('ไม่พบข้อมูลบน Cloud สำหรับ ID: '+FB.syncId,'error'); return null; }
+    return data;
+  }catch(e){ console.error(e); if(!silent) toast('Pull ล้มเหลว: '+e.message,'error'); updateCloudBadge('err'); return null; }
+}
+
+// Apply pulled data into S and refresh
+function fbApplyData(data, label){
+  S.settings  = {...S.settings,...data.settings};
+  S.tasks     = data.tasks||[];
+  S.baselines = data.baselines||[];
+  S.activeBL  = data.activeBL??-1;
+}
+
+// START real-time listener (auto-sync)
+function fbStartListen(){
+  if(!FB.configured||!FB.syncId) return;
+  fbStopListen();
+  FB.listener = fbRef().on('value', snap=>{
+    const data = snap.val(); if(!data) return;
+    // Skip if we just pushed this exact data
+    const hash = JSON.stringify({tasks:data.tasks,settings:data.settings}).length+'|'+(data.tasks||[]).length;
+    if(hash === FB.lastPushHash) return;
+    // Check source – don't apply own platform's push back
+    if(data.meta && data.meta.updatedBy === FB_PLATFORM) return;
+    fbApplyData(data, data.meta?.updatedBy||'remote');
+    onFbRemoteUpdate(data);
+    updateCloudBadge('live');
+  }, e=>{ console.error('FB listener error',e); updateCloudBadge('err'); });
+  FB.autoSync = true;
+  updateCloudBadge('live');
+}
+
+function fbStopListen(){
+  if(FB.listener && FB.db){ fbRef().off('value', FB.listener); FB.listener=null; }
+  FB.autoSync = false;
+  updateCloudBadge(FB.configured?'ok':'off');
+}
+
+
+const FB_PLATFORM = 'desktop';
+
+// Called when remote update arrives on desktop
+function onFbRemoteUpdate(data){
+  updateSettingsForm(); updateTopbar(); renderTasks();
+  if(S.tasks.length) runCPM();
+  updateBLSelector();
+  toast('☁ รับข้อมูลจาก Mobile แล้ว','success');
+}
+
+// Cloud badge update
+function updateCloudBadge(state){
+  const btn = document.getElementById('btn-cloud');
+  if(!btn) return;
+  const icons = {ok:'☁', live:'🟢', err:'🔴', off:'☁'};
+  const colors = {
+    ok:  'rgba(59,130,246,.15)',
+    live:'rgba(34,197,94,.15)',
+    err: 'rgba(239,68,68,.15)',
+    off: 'transparent'
+  };
+  const borders = {
+    ok:'rgba(59,130,246,.4)', live:'rgba(34,197,94,.4)',
+    err:'rgba(239,68,68,.4)', off:'var(--line2)'
+  };
+  const s = state||( FB.autoSync?'live': FB.configured?'ok':'off' );
+  btn.textContent = (icons[s]||'☁')+' Cloud';
+  btn.style.background = colors[s]||'transparent';
+  btn.style.borderColor = borders[s]||'var(--line2)';
+}
+
+// Open Cloud config modal
+function openCloudModal(){
+  const cfg = fbLoadConfig()||{};
+  openModal('☁ Cloud Sync — Firebase',`
+    <div style="font-family:var(--mono);font-size:10px;color:var(--txt3);background:var(--bg4);border-radius:4px;padding:10px 12px;margin-bottom:14px;line-height:1.9">
+      <div style="color:var(--accent);font-weight:600;margin-bottom:4px">วิธีตั้งค่า Firebase (ครั้งเดียว)</div>
+      1. ไปที่ <a href="https://console.firebase.google.com" target="_blank" style="color:var(--accent2)">console.firebase.google.com</a><br>
+      2. สร้างโปรเจค → เปิด <b>Realtime Database</b> → เลือก test mode<br>
+      3. Project Settings → Your apps → Add Web app → copy config<br>
+      4. วาง config ด้านล่าง แล้วกด Connect
+    </div>
+    <div class="form-grid cols-2">
+      <div class="form-row"><label>API Key</label><input id="fb-apiKey" type="text" placeholder="AIzaSy..." value="${cfg.apiKey||''}"></div>
+      <div class="form-row"><label>Auth Domain</label><input id="fb-authDomain" type="text" placeholder="xxx.firebaseapp.com" value="${cfg.authDomain||''}"></div>
+      <div class="form-row"><label>Database URL ★</label><input id="fb-dbUrl" type="text" placeholder="https://xxx-default-rtdb.firebaseio.com" value="${cfg.databaseURL||''}"></div>
+      <div class="form-row"><label>Project ID</label><input id="fb-projId" type="text" placeholder="my-firebase-project" value="${cfg.projectId||''}"></div>
+    </div>
+    <div class="form-grid cols-1">
+      <div class="form-row"><label>Sync ID (ชื่อห้อง — ตั้งเองได้ ตัวอักษรและขีด)</label>
+        <input id="fb-syncId" type="text" placeholder="เช่น egat-bb2-substation" value="${cfg.syncId||FB.syncId||''}">
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;margin-top:4px">
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-family:var(--mono);font-size:10px;color:var(--txt2)">
+        <input type="checkbox" id="fb-auto" ${FB.autoSync?'checked':''}> Auto-sync (รับข้อมูลจาก Mobile อัตโนมัติ)
+      </label>
+    </div>
+    ${FB.configured?`<div style="margin-top:12px;padding:8px 10px;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);border-radius:4px;font-family:var(--mono);font-size:10px;color:var(--green)">✓ เชื่อมต่อแล้ว · Sync ID: <b>${FB.syncId}</b> · ${FB.autoSync?'🟢 Auto-sync ON':'☁ Manual'}</div>`:''}
+  `,`
+    <button class="btn" onclick="closeModal()">ปิด</button>
+    <button class="btn success" onclick="fbConnectFromModal()">🔌 Connect</button>
+    ${FB.configured?`
+    <button class="btn primary" onclick="fbPull().then(d=>{if(d){fbApplyData(d);updateSettingsForm();updateTopbar();renderTasks();if(S.tasks.length)runCPM();updateBLSelector();toast('Pull สำเร็จ','success');closeModal();}})">⬇ Pull</button>
+    <button class="btn primary" onclick="fbPush().then(()=>closeModal())">⬆ Push</button>`:''}
+  `);
+}
+
+function fbConnectFromModal(){
+  const cfg = {
+    apiKey:      document.getElementById('fb-apiKey').value.trim(),
+    authDomain:  document.getElementById('fb-authDomain').value.trim(),
+    databaseURL: document.getElementById('fb-dbUrl').value.trim(),
+    projectId:   document.getElementById('fb-projId').value.trim(),
+    syncId:      document.getElementById('fb-syncId').value.trim().replace(/[^a-zA-Z0-9\-_]/g,'') || 'default'
+  };
+  if(!cfg.databaseURL){ toast('ใส่ Database URL ก่อน','error'); return; }
+  if(!fbInit(cfg)){ toast('เชื่อมต่อไม่ได้ ตรวจสอบ config','error'); return; }
+  const autoOn = document.getElementById('fb-auto').checked;
+  if(autoOn) fbStartListen(); else fbStopListen();
+  closeModal();
+  toast('🔌 เชื่อมต่อ Firebase แล้ว · Sync ID: '+FB.syncId,'success');
+}
+
+// Auto-push hook — call after every saveToStorage
+function fbAutoHook(){
+  if(FB.configured && FB.autoSync) fbPush(true);
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -2426,6 +2649,10 @@ function loadSample(){
   updateSettingsForm(); updateTopbar(); renderTasks();
   renderPhaseManager(); updateBLSelector();
   if(S.tasks.length) runCPM();
+  // Restore Firebase config
+  const fbCfg = fbLoadConfig();
+  if(fbCfg && fbCfg.databaseURL){ fbInit(fbCfg); if(fbCfg.autoSync) fbStartListen(); }
+  updateCloudBadge();
 })();
 </script>
 </body>
