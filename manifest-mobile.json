@@ -1,0 +1,27 @@
+{
+  "name": "CPM Mobile — EGAT",
+  "short_name": "CPM Mobile",
+  "description": "CPM Scheduler Mobile Companion for EGAT Projects",
+  "start_url": "/cpm-scheduler/CPM_Mobile_v2.html",
+  "scope": "/cpm-scheduler/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0F172A",
+  "theme_color": "#0F172A",
+  "icons": [
+    {
+      "src": "icon-mobile-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-mobile-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["productivity"],
+  "lang": "th"
+}
