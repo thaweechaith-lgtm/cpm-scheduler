@@ -145,6 +145,41 @@ body{font-family:var(--sans);background:var(--bg0);color:var(--txt);font-size:13
   box-shadow:0 1px 3px rgba(0,0,0,.04);
 }
 .kpi-card:hover{border-color:var(--accent);box-shadow:0 2px 8px rgba(20,104,179,.08);transform:translateY(-1px)}
+.kpi-card .kpi-sub{font-family:var(--mono);font-size:9px;color:var(--txt3);margin-top:2px}
+
+/* ── KPI Drilldown panel ── */
+#kpi-drilldown{
+  display:none;background:var(--bg1);border:1px solid var(--line2);border-radius:8px;
+  margin-bottom:20px;overflow:hidden;
+  box-shadow:0 4px 16px rgba(0,0,0,.08);
+}
+#kpi-drilldown-header{
+  display:flex;align-items:center;gap:12px;
+  padding:10px 16px;background:var(--bg4);border-bottom:1px solid var(--line);
+}
+#kpi-drilldown-header h4{font-family:var(--display);font-size:13px;font-weight:700;color:var(--txt);flex:1}
+.dd-close{cursor:pointer;font-size:16px;color:var(--txt3);padding:2px 6px;border-radius:3px}
+.dd-close:hover{background:var(--line);color:var(--txt)}
+#kpi-drilldown-body{max-height:300px;overflow-y:auto}
+.dd-row{
+  display:grid;grid-template-columns:48px 1fr 90px 90px 60px 80px 64px;
+  gap:0;align-items:center;border-bottom:1px solid var(--line);
+  padding:7px 16px;cursor:pointer;transition:background .1s;
+}
+.dd-row:last-child{border-bottom:none}
+.dd-row:hover{background:var(--bg4)}
+.dd-row.crit-row .dd-name{color:var(--red)!important;font-weight:600}
+
+/* ── Improved Tooltip ── */
+#tip{
+  display:none;position:fixed;pointer-events:none;
+  background:#1a2744;border:1.5px solid #3B82F6;
+  color:#F1F5F9;font-family:var(--mono);font-size:11px;
+  padding:12px 16px;border-radius:8px;
+  box-shadow:0 8px 32px rgba(0,0,0,.5);
+  z-index:9000;max-width:300px;line-height:2;
+  min-width:200px;
+}
 .kpi-label{font-family:var(--mono);font-size:9px;font-weight:500;
   color:var(--txt3);text-transform:uppercase;letter-spacing:.8px}
 .kpi-value{font-family:var(--display);font-size:26px;font-weight:700;color:var(--txt);line-height:1}
@@ -508,13 +543,20 @@ tbody td.name-col{color:var(--txt);max-width:280px;overflow:hidden;text-overflow
   <!-- Dashboard -->
   <div class="panel active" id="panel-dashboard">
     <div id="cp-strip"><strong>★ Critical Path</strong><span id="cp-text">Run CPM to calculate</span></div>
-    <div class="card-grid cols-6" id="kpi-grid">
-      <div class="kpi-card accent"><div class="kpi-label">Total Tasks</div><div class="kpi-value" id="kpi-total">—</div></div>
-      <div class="kpi-card green"><div class="kpi-label">Complete</div><div class="kpi-value" id="kpi-done">—</div></div>
-      <div class="kpi-card amber"><div class="kpi-label">In Progress</div><div class="kpi-value" id="kpi-prog">—</div></div>
-      <div class="kpi-card red"><div class="kpi-label">Delayed</div><div class="kpi-value" id="kpi-delay">—</div></div>
-      <div class="kpi-card gold"><div class="kpi-label">Critical Tasks</div><div class="kpi-value" id="kpi-crit">—</div></div>
-      <div class="kpi-card accent"><div class="kpi-label">Est. Finish</div><div class="kpi-value" style="font-size:15px" id="kpi-finish">—</div></div>
+  <div class="card-grid cols-6" id="kpi-grid">
+    <div class="kpi-card accent" style="cursor:pointer" onclick="showKpiDrilldown('all')"><div class="kpi-label">Total Tasks</div><div class="kpi-value" id="kpi-total">—</div><div class="kpi-sub">คลิกดูรายการ</div></div>
+    <div class="kpi-card green"  style="cursor:pointer" onclick="showKpiDrilldown('done')"><div class="kpi-label">Complete</div><div class="kpi-value" id="kpi-done">—</div><div class="kpi-sub">คลิกดูรายการ</div></div>
+    <div class="kpi-card amber"  style="cursor:pointer" onclick="showKpiDrilldown('prog')"><div class="kpi-label">In Progress</div><div class="kpi-value" id="kpi-prog">—</div><div class="kpi-sub">คลิกดูรายการ</div></div>
+    <div class="kpi-card red"    style="cursor:pointer" onclick="showKpiDrilldown('delay')"><div class="kpi-label">Delayed</div><div class="kpi-value" id="kpi-delay">—</div><div class="kpi-sub">คลิกดูรายการ</div></div>
+    <div class="kpi-card gold"   style="cursor:pointer" onclick="showKpiDrilldown('crit')"><div class="kpi-label">Critical Tasks</div><div class="kpi-value" id="kpi-crit">—</div><div class="kpi-sub">คลิกดูรายการ</div></div>
+    <div class="kpi-card accent"><div class="kpi-label">Est. Finish</div><div class="kpi-value" style="font-size:15px" id="kpi-finish">—</div></div>
+  </div>
+    <div id="kpi-drilldown">
+      <div id="kpi-drilldown-header">
+        <h4 id="kpi-drilldown-title">Tasks</h4>
+        <span class="dd-close" onclick="document.getElementById('kpi-drilldown').style.display='none'">✕</span>
+      </div>
+      <div id="kpi-drilldown-body"></div>
     </div>
     <div class="card-grid cols-2" style="margin-bottom:24px">
       <div class="card">
@@ -1259,6 +1301,7 @@ function updateTopbar(){
 function openAddTask(){
   const phases = getPhases();
   const phaseOpts = phases.map(p=>`<option>${p}</option>`).join('');
+  const taskOpts = S.tasks.filter(t=>t.dur>0).map(t=>`<option value="${t.id}">${t.id} — ${t.name}</option>`).join('');
   openModal('Add Task', `
     <div class="form-grid cols-3">
       <div class="form-row"><label>Activity ID</label><input id="f-id" type="number" placeholder="e.g. 1010"></div>
@@ -1269,18 +1312,51 @@ function openAddTask(){
       <div class="form-row"><label>Activity Name</label><input id="f-name" type="text" placeholder="Activity name"></div>
     </div>
     <div class="form-grid cols-2">
-      <div class="form-row"><label>Phase / Discipline</label><select id="f-phase" onchange="autoFillWbsId()" ><option value=""></option>${phaseOpts}</select></div>
+      <div class="form-row"><label>Phase / Discipline</label><select id="f-phase" onchange="autoFillWbsId()"><option value=""></option>${phaseOpts}</select></div>
       <div class="form-row"><label>Resource</label><input id="f-res" type="text" placeholder="Team / Person"></div>
     </div>
     <div class="form-grid cols-1">
-      <div class="form-row"><label>Predecessors (e.g. 1010FS|2020SS+5)</label><input id="f-pred" type="text" placeholder="ID+Type+Lag separated by |"></div>
+      <div class="form-row">
+        <label>Predecessors</label>
+        <input id="f-pred" type="text" placeholder="e.g. 1010FS|2020SS+5" style="margin-bottom:6px">
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;background:var(--bg4);border:1px solid var(--line);border-radius:4px;padding:8px 10px">
+          <span style="font-family:var(--mono);font-size:9px;color:var(--txt3);flex-shrink:0">+ เพิ่ม:</span>
+          <select id="pred-pick-task" style="flex:1;min-width:160px;font-size:11px;padding:4px 6px">
+            <option value="">— เลือก Task —</option>${taskOpts}
+          </select>
+          <select id="pred-pick-rel" style="width:70px;font-size:11px;padding:4px 6px">
+            <option value="FS">FS</option><option value="SS">SS</option><option value="FF">FF</option><option value="SF">SF</option>
+          </select>
+          <input id="pred-pick-lag" type="number" value="0" style="width:56px;font-size:11px;padding:4px 6px" placeholder="lag">
+          <button class="btn" onclick="addPredFromPicker()" style="padding:4px 10px;font-size:10px;flex-shrink:0">+ เพิ่ม</button>
+        </div>
+      </div>
     </div>
     <div class="form-grid cols-3">
-      <div class="form-row"><label>Actual Start</label><input id="f-as" type="date"></div>
-      <div class="form-row"><label>Actual Finish</label><input id="f-af" type="date"></div>
+      <div class="form-row"><label>Plan Start</label><input id="f-as" type="date"></div>
+      <div class="form-row"><label>Plan Finish</label><input id="f-af" type="date"></div>
       <div class="form-row"><label>% Complete (0-100)</label><input id="f-pct" type="number" value="0" min="0" max="100"></div>
     </div>
   `, `<button class="btn" onclick="closeModal()">Cancel</button><button class="btn primary" onclick="saveTask(-1)">Add Task</button>`);
+}
+
+// ── Predecessor picker helper ─────────────────────────────────────────────────
+function addPredFromPicker(){
+  const taskSel = document.getElementById('pred-pick-task');
+  const relSel  = document.getElementById('pred-pick-rel');
+  const lagEl   = document.getElementById('pred-pick-lag');
+  const predEl  = document.getElementById('f-pred');
+  if(!taskSel||!relSel||!lagEl||!predEl) return;
+  const tid = taskSel.value; if(!tid){ toast('เลือก Task ก่อน','error'); return; }
+  const rel = relSel.value || 'FS';
+  const lag = parseInt(lagEl.value)||0;
+  let entry = String(tid);
+  if(rel!=='FS') entry+=rel;
+  if(lag!==0) entry+=(lag>0?'+':'')+lag;
+  const cur = predEl.value.trim();
+  predEl.value = cur ? cur+'|'+entry : entry;
+  taskSel.value=''; lagEl.value='0';
+  toast(`เพิ่ม: ${entry}`,'success');
 }
 
 // Auto-fill WBS and ID when phase is selected in Add Task modal
@@ -1341,6 +1417,7 @@ function autoFillWbsId(){
 function editTask(idx){
   const t=S.tasks[idx];
   const phases=getPhases(); const phaseOpts=phases.map(p=>`<option${p===t.phase?' selected':''}>${p}</option>`).join('');
+  const taskOpts=S.tasks.filter(tt=>tt.dur>0&&tt.id!==t.id).map(tt=>`<option value="${tt.id}">${tt.id} — ${tt.name}</option>`).join('');
   openModal('Edit Task', `
     <div class="form-grid cols-3">
       <div class="form-row"><label>Activity ID</label><input id="f-id" type="number" value="${t.id}"></div>
@@ -1355,11 +1432,25 @@ function editTask(idx){
       <div class="form-row"><label>Resource</label><input id="f-res" type="text" value="${t.resource||''}"></div>
     </div>
     <div class="form-grid cols-1">
-      <div class="form-row"><label>Predecessors</label><input id="f-pred" type="text" value="${t.predecessors||''}"></div>
+      <div class="form-row">
+        <label>Predecessors</label>
+        <input id="f-pred" type="text" value="${t.predecessors||''}" style="margin-bottom:6px">
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;background:var(--bg4);border:1px solid var(--line);border-radius:4px;padding:8px 10px">
+          <span style="font-family:var(--mono);font-size:9px;color:var(--txt3);flex-shrink:0">+ เพิ่ม:</span>
+          <select id="pred-pick-task" style="flex:1;min-width:160px;font-size:11px;padding:4px 6px">
+            <option value="">— เลือก Task —</option>${taskOpts}
+          </select>
+          <select id="pred-pick-rel" style="width:70px;font-size:11px;padding:4px 6px">
+            <option value="FS">FS</option><option value="SS">SS</option><option value="FF">FF</option><option value="SF">SF</option>
+          </select>
+          <input id="pred-pick-lag" type="number" value="0" style="width:56px;font-size:11px;padding:4px 6px" placeholder="lag">
+          <button class="btn" onclick="addPredFromPicker()" style="padding:4px 10px;font-size:10px;flex-shrink:0">+ เพิ่ม</button>
+        </div>
+      </div>
     </div>
     <div class="form-grid cols-3">
-      <div class="form-row"><label>Actual Start</label><input id="f-as" type="date" value="${t.actualStart||''}"></div>
-      <div class="form-row"><label>Actual Finish</label><input id="f-af" type="date" value="${t.actualFinish||''}"></div>
+      <div class="form-row"><label>Plan Start (Actual)</label><input id="f-as" type="date" value="${t.actualStart||''}"></div>
+      <div class="form-row"><label>Plan Finish (Actual)</label><input id="f-af" type="date" value="${t.actualFinish||''}"></div>
       <div class="form-row"><label>% Complete</label><input id="f-pct" type="number" value="${t.pct||0}" min="0" max="100"></div>
     </div>
   `, `<button class="btn danger" onclick="deleteTask(${idx})">Delete</button><button class="btn" onclick="closeModal()">Cancel</button><button class="btn primary" onclick="saveTask(${idx})">Save</button>`);
@@ -1554,8 +1645,43 @@ function renderDashboard(){
     </div>${phHtml}`;
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// SCHEDULE TABLE
+function showKpiDrilldown(type){
+  if(!S.results){ toast('Run CPM first','error'); return; }
+  const {results, projStartD} = S.results;
+  const rMap={}; results.forEach(r=>rMap[r.id]=r);
+
+  const titles={all:'ทุก Tasks',done:'✅ Complete',prog:'🔄 In Progress',delay:'⚠ Delayed',crit:'🔴 Critical Path'};
+  let list=results;
+  if(type==='done')  list=results.filter(r=>r.pct===100);
+  if(type==='prog')  list=results.filter(r=>r.pct>0&&r.pct<100);
+  if(type==='delay') list=results.filter(r=>r.schedDelay>0);
+  if(type==='crit')  list=results.filter(r=>r.critical);
+
+  document.getElementById('kpi-drilldown-title').textContent=`${titles[type]||'Tasks'} (${list.length} รายการ)`;
+
+  const colHeaders=`<div class="dd-row" style="background:var(--bg4);cursor:default;font-family:var(--mono);font-size:9px;color:var(--txt3);font-weight:600;letter-spacing:.5px;text-transform:uppercase;border-bottom:2px solid var(--line2)">
+    <div>ID</div><div>Name</div><div>Plan Start</div><div>Plan Finish</div><div>%</div><div>Forecast</div><div>Delay</div></div>`;
+
+  const rows=list.map(r=>{
+    const isCrit=r.critical;
+    const pctColor=r.pct===100?'var(--green)':r.pct>0?'var(--gold)':'var(--txt3)';
+    const delayHtml=r.schedDelay>0?`<span class="badge amber">+${r.schedDelay}d</span>`:'<span class="badge green">✓</span>';
+    const taskIdx=S.tasks.findIndex(t=>t.id===r.id);
+    return `<div class="dd-row${isCrit?' crit-row':''}" onclick="editTask(${taskIdx})">
+      <div><span class="badge blue" style="font-size:9px">${r.id}</span></div>
+      <div class="dd-name" style="font-size:11px;color:${isCrit?'var(--red)':'var(--txt)'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.name||''}</div>
+      <div style="font-family:var(--mono);font-size:10px;color:var(--accent)">${r.curStart||'—'}</div>
+      <div style="font-family:var(--mono);font-size:10px;color:var(--accent)">${r.curFinish||'—'}</div>
+      <div><span class="badge ${r.pct===100?'green':r.pct>0?'amber':'grey'}">${r.pct}%</span></div>
+      <div style="font-family:var(--mono);font-size:10px;color:${r.schedDelay>0?'var(--amber)':'var(--txt3)'}">${r.forecastFinish||'—'}</div>
+      <div>${delayHtml}</div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('kpi-drilldown-body').innerHTML=colHeaders+rows;
+  document.getElementById('kpi-drilldown').style.display='block';
+  document.getElementById('kpi-drilldown').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
 // ═══════════════════════════════════════════════════════════════════════════════
 function renderSchedule(filter){
   if(!S.results){ document.getElementById('sched-tbody').innerHTML='<tr><td colspan="20" style="text-align:center;padding:24px;color:var(--txt3)">Run CPM first</td></tr>'; return; }
@@ -2117,13 +2243,26 @@ function resetViewRange(){
 function showGTip(e,enc){
   const d=JSON.parse(decodeURIComponent(enc));
   const tip=document.getElementById('tip');
-  tip.innerHTML=`<strong style="color:var(--txt);font-size:11px;display:block;margin-bottom:4px;border-bottom:1px solid var(--line);padding-bottom:4px">${d.id} — ${d.name}</strong>
-    ${d.crit?'<span style="color:var(--red)">★ Critical Path</span><br>':''}
-    ${d.blS?`<span style="color:#999">${d.blName}:</span> ${d.blS} → ${d.blF}<br>`:''}
-    <span style="color:var(--accent)">Current:</span> ${d.curS||'—'} → ${d.curF||'—'}<br>
-    ${d.actS?`<span style="color:var(--green)">Actual:</span> ${d.actS} → ${d.actF||'ongoing'}<br>`:''}
-    TF: ${d.TF??'—'}d &nbsp;|&nbsp; ${d.pct}% — ${d.status||'—'}<br>
-    ${d.delay>0?`<span style="color:var(--amber)">⚠ Delay: +${d.delay}d</span>`:''}`;
+  const statusColor = d.pct===100?'#22C55E':d.pct>0?'#F59E0B':'#94A3B8';
+  const critHtml = d.crit ? `<div style="color:#FCA5A5;font-weight:600;margin-bottom:4px">★ Critical Path</div>` : '';
+  const delayHtml = d.delay>0
+    ? `<div style="background:rgba(249,115,22,.2);border:1px solid rgba(249,115,22,.4);border-radius:4px;padding:3px 8px;margin-top:4px;color:#FDBA74">⚠ Delay: +${d.delay} วันทำงาน</div>` : '';
+  const blHtml = d.blS
+    ? `<div style="color:#94A3B8"><span style="color:#CBD5E1">📌 BL (${d.blName}):</span> ${d.blS} → ${d.blF}</div>` : '';
+  const actHtml = d.actS
+    ? `<div style="color:#86EFAC"><span style="color:#CBD5E1">✅ Actual:</span> ${d.actS} → ${d.actF||'กำลังดำเนินการ'}</div>` : '';
+  tip.innerHTML=`
+    <div style="font-weight:700;font-size:12px;color:#F8FAFC;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid #3B5280;line-height:1.4">${d.id} — ${d.name}</div>
+    ${critHtml}
+    <div style="color:#93C5FD"><span style="color:#CBD5E1">📅 Plan:</span> ${d.curS||'—'} → ${d.curF||'—'}</div>
+    ${blHtml}
+    ${actHtml}
+    <div style="margin-top:4px;display:flex;gap:12px;align-items:center">
+      <span style="color:#CBD5E1">Float:</span><span style="color:#FDE68A;font-weight:600">${d.TF??'—'}d</span>
+      <span style="color:#CBD5E1">Progress:</span><span style="color:${statusColor};font-weight:700">${d.pct}%</span>
+      <span style="color:#CBD5E1">Status:</span><span style="color:#E2E8F0">${d.status||'—'}</span>
+    </div>
+    ${delayHtml}`;
   tip.style.display='block';
   moveGTip(e);
 }
