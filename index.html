@@ -2628,9 +2628,32 @@ function fbInit(cfg){
 
 function fbRef(){ return FB.db.ref('cpm_projects/'+FB.syncId); }
 
-// Serialise project to a plain object
+// Firebase keys cannot contain: . # $ / [ ]
+// Encode: replace . → ꞏ (U+A78F) and other forbidden chars
+function fbEncodeKeys(obj){
+  if(obj===null||obj===undefined||typeof obj!=='object') return obj;
+  if(Array.isArray(obj)) return obj.map(fbEncodeKeys);
+  const out={};
+  for(const k of Object.keys(obj)){
+    const safe = k.replace(/\./g,'__DOT__').replace(/#/g,'__HASH__').replace(/\$/g,'__DOLLAR__').replace(/\//g,'__SLASH__').replace(/\[/g,'__LB__').replace(/\]/g,'__RB__');
+    out[safe] = fbEncodeKeys(obj[k]);
+  }
+  return out;
+}
+function fbDecodeKeys(obj){
+  if(obj===null||obj===undefined||typeof obj!=='object') return obj;
+  if(Array.isArray(obj)) return obj.map(fbDecodeKeys);
+  const out={};
+  for(const k of Object.keys(obj)){
+    const orig = k.replace(/__DOT__/g,'.').replace(/__HASH__/g,'#').replace(/__DOLLAR__/g,'$').replace(/__SLASH__/g,'/').replace(/__LB__/g,'[').replace(/__RB__/g,']');
+    out[orig] = fbDecodeKeys(obj[k]);
+  }
+  return out;
+}
+
+// Serialise project to a plain object (with safe Firebase keys)
 function fbSerialise(source){
-  return {
+  const raw = {
     settings: source.settings||S.settings,
     tasks:    source.tasks||S.tasks,
     baselines:source.baselines||S.baselines,
@@ -2641,6 +2664,7 @@ function fbSerialise(source){
       projectName: (source.settings||S.settings).name||''
     }
   };
+  return fbEncodeKeys(raw);
 }
 
 // PUSH current project to Firebase
@@ -2661,18 +2685,19 @@ async function fbPull(silent){
   if(!FB.configured||!FB.syncId){ if(!silent) toast('ยังไม่ได้ตั้งค่า Firebase','error'); return null; }
   try{
     const snap = await fbRef().once('value');
-    const data = snap.val();
-    if(!data){ if(!silent) toast('ไม่พบข้อมูลบน Cloud สำหรับ ID: '+FB.syncId,'error'); return null; }
-    return data;
+    const raw = snap.val();
+    if(!raw){ if(!silent) toast('ไม่พบข้อมูลบน Cloud สำหรับ ID: '+FB.syncId,'error'); return null; }
+    return fbDecodeKeys(raw);
   }catch(e){ console.error(e); if(!silent) toast('Pull ล้มเหลว: '+e.message,'error'); updateCloudBadge('err'); return null; }
 }
 
-// Apply pulled data into S and refresh
+// Apply pulled data into S and refresh (decode keys first)
 function fbApplyData(data, label){
-  S.settings  = {...S.settings,...data.settings};
-  S.tasks     = data.tasks||[];
-  S.baselines = data.baselines||[];
-  S.activeBL  = data.activeBL??-1;
+  const decoded = fbDecodeKeys(data);
+  S.settings  = {...S.settings,...decoded.settings};
+  S.tasks     = decoded.tasks||[];
+  S.baselines = decoded.baselines||[];
+  S.activeBL  = decoded.activeBL??-1;
 }
 
 // START real-time listener (auto-sync)
