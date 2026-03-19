@@ -1094,14 +1094,27 @@ function runCPMEngine(tasks, projStart, dataDate){
     else if(t.pct>0||actS) status='In Progress';
     else if(actF) status='Complete';
 
-    const forecastDur = t.dur - Math.round(t.pct/100*t.dur);
     let forecastFinish;
-    if(status==='Complete') forecastFinish=actF||blFinish;
-    else if(actS){
+    if(status==='Complete'){
+      // งานเสร็จแล้ว — ใช้วันที่จริง
+      forecastFinish = actF || blFinish;
+    } else if(actS){
       const elapsed = diffWD(actS, dateDateD);
-      const remainDays = Math.max(0, t.dur - elapsed);
+      let remainDays;
+      if(elapsed < t.dur){
+        // กรณีปกติ: elapsed ยังน้อยกว่า duration — ใช้เวลาที่เหลือตามแผน
+        remainDays = t.dur - elapsed;
+      } else {
+        // กรณีบานเวลา: elapsed ≥ duration แต่งานยังไม่เสร็จ
+        // ใช้ % เป็นฐานคำนวณ remaining จาก duration จริง
+        remainDays = Math.round(t.dur * (1 - t.pct / 100));
+        // ถ้า % = 0 และ elapsed เกินแล้ว ให้ประมาณ remaining = duration × 0.5 (safe fallback)
+        if(t.pct === 0) remainDays = Math.round(t.dur * 0.5);
+      }
+      remainDays = Math.max(0, remainDays);
       forecastFinish = addWD(dateDateD, remainDays);
     } else {
+      // ยังไม่เริ่ม — ใช้แผนเดิม (EF จาก CPM)
       forecastFinish = blFinish;
     }
 
