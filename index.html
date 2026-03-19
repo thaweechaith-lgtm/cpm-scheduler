@@ -472,10 +472,11 @@ tbody td.name-col{color:var(--txt);max-width:280px;overflow:hidden;text-overflow
   <div class="proj-name" id="topbar-proj">No project loaded</div>
   <div class="spacer"></div>
   <div class="data-date-badge" id="topbar-date">Data Date: —</div>
-  <button class="top-btn" onclick="importExcel()">📥 Import Excel</button>
+  <button class="top-btn" onclick="document.getElementById('import-json').click()">📂 JSON</button>
+  <button class="top-btn" onclick="importExcel()">📥 Excel</button>
   <button class="top-btn" id="btn-undo" onclick="undo()" style="opacity:.4" disabled title="Nothing to undo">↩ Undo</button>
   <button class="top-btn primary" onclick="runCPM()">▶ Calculate CPM</button>
-  <button class="top-btn" onclick="setBaseline()" style="background:rgba(22,163,74,.1);color:var(--green);border-color:rgba(22,163,74,.4)">📌 Set Baseline</button>
+  <button class="top-btn" onclick="setBaseline()" style="background:rgba(22,163,74,.1);color:var(--green);border-color:rgba(22,163,74,.4)">📌 Baseline</button>
   <button id="btn-cloud" onclick="openCloudModal()">☁ Cloud</button>
 </div>
 
@@ -2663,6 +2664,16 @@ function fbAutoHook(){
   if(fbCfg && fbCfg.databaseURL){ fbInit(fbCfg); if(fbCfg.autoSync) fbStartListen(); }
   updateCloudBadge();
 })();
+</script>
+
+<script>
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('/cpm-scheduler/sw.js')
+      .then(r => console.log('SW registered:', r.scope))
+      .catch(e => console.log('SW error:', e));
+  });
+}
 </script>
 </body>
 </html>
