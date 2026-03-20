@@ -424,11 +424,20 @@ tbody td.name-col{color:var(--txt);max-width:280px;overflow:hidden;text-overflow
 
 /* ── Phase breakdown ── */
 .phase-row{
-  display:grid;grid-template-columns:180px 1fr 80px 60px 60px;
+  display:grid;grid-template-columns:200px 1fr 72px 60px 72px;
   gap:12px;align-items:center;padding:10px 0;
-  border-bottom:1px solid var(--line);
+  border-bottom:1px solid var(--line);cursor:pointer;transition:background .1s;
+  border-radius:4px;
 }
+.phase-row:hover{background:var(--bg4)}
 .phase-row:last-child{border-bottom:none}
+.phase-row.l1{font-weight:600}
+.phase-row.l2{
+  padding:7px 0 7px 18px;
+  border-bottom:1px dashed var(--line);
+  background:var(--bg2);
+}
+.phase-row.l2:hover{background:var(--bg4)}
 .phase-name{font-size:12px;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 /* ── CP strip ── */
@@ -477,6 +486,23 @@ tbody td.name-col{color:var(--txt);max-width:280px;overflow:hidden;text-overflow
   color:var(--txt2);transition:all .2s;white-space:nowrap;
 }
 #btn-cloud:hover{color:var(--txt);border-color:var(--accent)}
+
+/* ── S-Curve Chart ── */
+#scurve-wrap{background:var(--bg1);border:1px solid var(--line);border-radius:6px;padding:16px 20px;margin-bottom:24px}
+#scurve-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+#scurve-toolbar .stl{font-family:var(--mono);font-size:10px;font-weight:700;color:var(--txt2);flex:1}
+.scurve-legend{display:flex;gap:14px;align-items:center;font-family:var(--mono);font-size:9px;color:var(--txt3)}
+.scurve-legend span{display:flex;align-items:center;gap:5px}
+.scurve-legend .dot{width:12px;height:3px;border-radius:1px;flex-shrink:0}
+#scurve-canvas{width:100%;display:block;border-radius:4px;cursor:crosshair}
+/* ── View Date Picker ── */
+#date-picker-card{background:var(--bg4);border:1px solid var(--accent);border-radius:6px;padding:10px 16px;margin-bottom:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+#dash-view-date{font-family:var(--mono);font-size:12px;padding:5px 10px;border:1px solid var(--line2);border-radius:4px;background:var(--bg1);color:var(--txt);outline:none}
+#dash-view-date:focus{border-color:var(--accent)}
+.vdate-kpi{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.vdate-stat{font-family:var(--mono);font-size:11px;display:flex;flex-direction:column;gap:1px;min-width:80px}
+.vdate-stat .vl{font-size:9px;color:var(--txt3);text-transform:uppercase;letter-spacing:.4px}
+.vdate-stat .vv{font-weight:700;color:var(--txt)}
 
 /* ── Animations ── */
 @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
@@ -558,6 +584,15 @@ tbody td.name-col{color:var(--txt);max-width:280px;overflow:hidden;text-overflow
       </div>
       <div id="kpi-drilldown-body"></div>
     </div>
+
+    <!-- View Date Picker -->
+    <div id="date-picker-card">
+      <span style="font-family:var(--mono);font-size:10px;color:var(--txt3);white-space:nowrap">🗓 ดู ณ วันที่:</span>
+      <input type="date" id="dash-view-date" onchange="renderDashboard()">
+      <button class="btn" onclick="resetViewDate()" style="padding:4px 10px;font-size:10px">↺ Data Date</button>
+      <div class="vdate-kpi" id="vdate-kpi-row" style="flex:1;justify-content:flex-end"></div>
+    </div>
+
     <div class="card-grid cols-2" style="margin-bottom:24px">
       <div class="card">
         <div class="section-title">Schedule Performance</div>
@@ -594,7 +629,23 @@ tbody td.name-col{color:var(--txt);max-width:280px;overflow:hidden;text-overflow
         </div>
       </div>
     </div>
-    <div class="section-title">Phase Breakdown (WBS Level 1)</div>
+    <!-- S-Curve -->
+    <div id="scurve-wrap">
+      <div id="scurve-toolbar">
+        <span class="stl">📈 S-Curve — Planned vs Actual (%สะสม)</span>
+        <div class="scurve-legend">
+          <span><span class="dot" style="background:#1468B3"></span>Plan</span>
+          <span><span class="dot" style="background:#16A34A"></span>Actual</span>
+          <span><span class="dot" style="background:transparent;border-top:2px dashed #EA580C;width:12px"></span>Data Date</span>
+        </div>
+      </div>
+      <canvas id="scurve-canvas" height="200" onmousemove="scurveMouseMove(event)" onmouseleave="document.getElementById('scurve-tip').style.display='none'"></canvas>
+      <div id="scurve-tip" style="display:none;font-family:var(--mono);font-size:10px;color:var(--txt2);margin-top:6px;padding:5px 10px;background:var(--bg4);border-radius:4px;border:1px solid var(--line)"></div>
+    </div>
+
+    <div class="section-title">Phase Breakdown — Weighted by Duration
+      <span style="font-size:10px;color:var(--txt3);font-weight:400;text-transform:none;letter-spacing:0">(กดหัวข้อเพื่อขยาย/ย่อ sub-phase)</span>
+    </div>
     <div id="phase-breakdown" class="card"></div>
   </div>
 
@@ -1162,19 +1213,24 @@ function computeSummaries(l3results, projStartD){
         bl_start:null,bl_finish:null,
         cur_start:null,cur_finish:null,
         ES:r.ES,EF:r.EF,
-        pctSum:0,pctCount:0,anyCrit:false,maxDelay:0,
+        pctSum:0,pctCount:0,
+        durWeightedPctSum:0,durSum:0,   // ← Weighted by Duration
+        anyCrit:false,maxDelay:0,
         statusCounts:{Complete:0,'In Progress':0,'Not Started':0},maxEF:0
       };
       const s=sums[pw];
       const bs=pd(r.blStart), bf=pd(r.blFinish);
       if(!s.bl_start||bs<pd(s.bl_start)) s.bl_start=r.blStart;
       if(!s.bl_finish||bf>pd(s.bl_finish)) s.bl_finish=r.blFinish;
-      // Current schedule dates (always from ES/EF)
       const cs=pd(r.curStart), cf=pd(r.curFinish);
       if(!s.cur_start||cs<pd(s.cur_start)) s.cur_start=r.curStart;
       if(!s.cur_finish||cf>pd(s.cur_finish)) s.cur_finish=r.curFinish;
       s.ES=Math.min(s.ES,r.ES); s.EF=Math.max(s.EF,r.EF);
       s.pctSum+=r.pct; s.pctCount++;
+      // Weighted: accumulate pct×dur and dur
+      const dur = r.dur||1;
+      s.durWeightedPctSum += r.pct * dur;
+      s.durSum += dur;
       if(r.critical) s.anyCrit=true;
       s.maxDelay=Math.max(s.maxDelay,r.schedDelay);
       s.statusCounts[r.status]=(s.statusCounts[r.status]||0)+1;
@@ -1182,7 +1238,8 @@ function computeSummaries(l3results, projStartD){
   });
   Object.keys(sums).forEach(w=>{
     const s=sums[w];
-    s.pct=s.pctCount?Math.round(s.pctSum/s.pctCount):0;
+    // Weighted by Duration % (used for display)
+    s.pct = s.durSum>0 ? Math.round(s.durWeightedPctSum/s.durSum) : 0;
     const sc=s.statusCounts;
     if(sc.Complete===s.pctCount) s.status='Complete';
     else if(sc['Not Started']===s.pctCount) s.status='Not Started';
@@ -1579,22 +1636,217 @@ function statusBadgeHTML(s){
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// PLANNED % CALCULATION (Earned Value — linear interpolation)
+// ═══════════════════════════════════════════════════════════════════════════════
+function calcPlannedPctAt(blStart, blFinish, viewDate, projStartD){
+  if(!blStart||!blFinish) return 0;
+  const bs=pd(blStart), bf=pd(blFinish);
+  if(!bs||!bf) return 0;
+  const vd=viewDate||projStartD;
+  if(vd<=bs) return 0;
+  if(vd>=bf) return 100;
+  const totalDur = diffWD(bs, bf);
+  if(totalDur<=0) return 100;
+  const elapsed  = diffWD(bs, vd);
+  return Math.round(Math.min(100, elapsed/totalDur*100));
+}
+
+// Weighted Planned% for a list of results at a viewDate
+function calcWeightedPlanned(resultsList, viewDate, projStartD){
+  let durSum=0, wtSum=0;
+  resultsList.forEach(r=>{
+    const dur=r.dur||1;
+    const pp=calcPlannedPctAt(r.blStart, r.blFinish, viewDate, projStartD);
+    wtSum+=pp*dur; durSum+=dur;
+  });
+  return durSum>0?Math.round(wtSum/durSum):0;
+}
+
+function resetViewDate(){
+  document.getElementById('dash-view-date').value=S.settings.dataDate||'';
+  renderDashboard();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// S-CURVE RENDERER
+// ═══════════════════════════════════════════════════════════════════════════════
+function renderSCurve(results, projStartD, projEndD, dateDateD){
+  const canvas=document.getElementById('scurve-canvas');
+  if(!canvas) return;
+  const dpr=window.devicePixelRatio||1;
+  const W=canvas.offsetWidth||canvas.parentElement.offsetWidth||600;
+  const H=200;
+  canvas.width=W*dpr; canvas.height=H*dpr;
+  canvas.style.width=W+'px'; canvas.style.height=H+'px';
+  const ctx=canvas.getContext('2d');
+  ctx.scale(dpr,dpr);
+
+  const PAD={l:36,r:16,t:12,b:28};
+  const cW=W-PAD.l-PAD.r, cH=H-PAD.t-PAD.b;
+
+  // Date range: projStart → projEnd + 10%
+  const startMs=projStartD.getTime();
+  const endMs=projEndD.getTime();
+  const rangeMs=endMs-startMs;
+  if(rangeMs<=0) return;
+
+  // Build data points (monthly or every N working days)
+  const pts=[];
+  const totalDurAll=results.reduce((s,r)=>s+(r.dur||1),0);
+  const STEPS=40;
+  for(let i=0;i<=STEPS;i++){
+    const ms=startMs+(rangeMs*i/STEPS);
+    const d=new Date(ms);
+    // Weighted Planned% at d
+    let planWtSum=0,actWtSum=0,durSum2=0;
+    results.forEach(r=>{
+      const dur=r.dur||1;
+      planWtSum+=calcPlannedPctAt(r.blStart,r.blFinish,d,projStartD)*dur;
+      // Actual: only count tasks that have started by this date
+      const actS=r.actualStart?pd(r.actualStart):null;
+      const actF=r.actualFinish?pd(r.actualFinish):null;
+      if(actS&&actS<=d){
+        if(actF&&actF<=d) actWtSum+=100*dur;
+        else{
+          // linear from actual start to today using current pct
+          const totD2=diffWD(actS,actF||dateDateD)||1;
+          const elD2=diffWD(actS,d);
+          actWtSum+=Math.min(r.pct,100*elD2/totD2)*dur;
+        }
+      }
+      durSum2+=dur;
+    });
+    pts.push({
+      ms, d,
+      plan: durSum2>0?Math.round(planWtSum/durSum2):0,
+      actual: durSum2>0?Math.round(actWtSum/durSum2):0,
+      isPast: d<=dateDateD
+    });
+  }
+
+  // Background
+  ctx.fillStyle='#F8FAFB';
+  ctx.fillRect(0,0,W,H);
+
+  // Grid lines
+  ctx.strokeStyle='#DDE3EA'; ctx.lineWidth=1;
+  for(let i=0;i<=4;i++){
+    const y=PAD.t+cH-cH*i/4;
+    ctx.beginPath(); ctx.moveTo(PAD.l,y); ctx.lineTo(PAD.l+cW,y); ctx.stroke();
+    ctx.fillStyle='#64748B'; ctx.font=`${9*dpr/dpr}px monospace`; ctx.textAlign='right';
+    ctx.fillText((i*25)+'%', PAD.l-4, y+3);
+  }
+
+  // X-axis month labels
+  ctx.fillStyle='#64748B'; ctx.font='9px monospace'; ctx.textAlign='center';
+  const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  let lastMo=-1;
+  pts.forEach(p=>{
+    const mo=p.d.getMonth();
+    if(mo!==lastMo){
+      lastMo=mo;
+      const x=PAD.l+cW*(p.ms-startMs)/rangeMs;
+      ctx.fillText(months[mo]+' '+String(p.d.getFullYear()).slice(2), x, H-PAD.b+12);
+    }
+  });
+
+  // Data Date vertical line
+  const ddX=PAD.l+cW*(dateDateD.getTime()-startMs)/rangeMs;
+  if(ddX>=PAD.l&&ddX<=PAD.l+cW){
+    ctx.strokeStyle='rgba(234,88,12,0.6)'; ctx.lineWidth=1.5;
+    ctx.setLineDash([4,3]);
+    ctx.beginPath(); ctx.moveTo(ddX,PAD.t); ctx.lineTo(ddX,PAD.t+cH); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle='#EA580C'; ctx.font='9px monospace'; ctx.textAlign='center';
+    ctx.fillText('DD',ddX,PAD.t-2);
+  }
+
+  // Plan line
+  ctx.beginPath(); ctx.strokeStyle='#1468B3'; ctx.lineWidth=2; ctx.setLineDash([]);
+  pts.forEach((p,i)=>{
+    const x=PAD.l+cW*(p.ms-startMs)/rangeMs;
+    const y=PAD.t+cH-cH*p.plan/100;
+    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  });
+  ctx.stroke();
+
+  // Actual line (only up to dataDate)
+  const actualPts=pts.filter(p=>p.isPast);
+  if(actualPts.length>1){
+    ctx.beginPath(); ctx.strokeStyle='#16A34A'; ctx.lineWidth=2.5;
+    actualPts.forEach((p,i)=>{
+      const x=PAD.l+cW*(p.ms-startMs)/rangeMs;
+      const y=PAD.t+cH-cH*p.actual/100;
+      i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+    });
+    ctx.stroke();
+    // Actual fill
+    ctx.globalAlpha=0.1;
+    ctx.fillStyle='#16A34A';
+    ctx.lineTo(PAD.l+cW*(actualPts[actualPts.length-1].ms-startMs)/rangeMs, PAD.t+cH);
+    ctx.lineTo(PAD.l, PAD.t+cH);
+    ctx.fill();
+    ctx.globalAlpha=1;
+  }
+
+  // Hover interaction
+  canvas._pts=pts; canvas._startMs=startMs; canvas._rangeMs=rangeMs;
+  canvas._PAD=PAD; canvas._cW=cW; canvas._cH=cH;
+}
+
+// S-Curve mouse hover tooltip
+function scurveMouseMove(e){
+  const canvas=document.getElementById('scurve-canvas');
+  if(!canvas||!canvas._pts) return;
+  const rect=canvas.getBoundingClientRect();
+  const mx=e.clientX-rect.left;
+  const {_pts,_startMs,_rangeMs,_PAD,_cW,_cH}=canvas;
+  const ratio=(mx-_PAD.l)/_cW;
+  if(ratio<0||ratio>1) return;
+  const ms=_startMs+_rangeMs*ratio;
+  // Find nearest point
+  let nearest=_pts[0];
+  _pts.forEach(p=>{ if(Math.abs(p.ms-ms)<Math.abs(nearest.ms-ms)) nearest=p; });
+  const tip=document.getElementById('scurve-tip');
+  if(tip){
+    const sv=nearest.actual-nearest.plan;
+    tip.innerHTML=`<b>${nearest.d.toLocaleDateString('th',{day:'2-digit',month:'short',year:'2-digit'})}</b>
+      &nbsp; Plan: <b style="color:#1468B3">${nearest.plan}%</b>
+      &nbsp; Actual: <b style="color:#16A34A">${nearest.actual}%</b>
+      &nbsp; SV: <b style="color:${sv>=0?'#16A34A':'#DC2626'}">${sv>=0?'+':''}${sv}%</b>`;
+    tip.style.display='block';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // DASHBOARD
 // ═══════════════════════════════════════════════════════════════════════════════
 function renderDashboard(){
   if(!S.results) return;
   const {results, summaries, projDur, projStartD, dateDateD} = S.results;
   const projFinish = addWD(projStartD, projDur);
+
+  // ── View Date (date picker override) ──────────────────────────────────────
+  const vdInput = document.getElementById('dash-view-date');
+  if(vdInput && !vdInput.value) vdInput.value = S.settings.dataDate||'';
+  const viewDate = vdInput && vdInput.value ? pd(vdInput.value) : dateDateD;
+  const viewDateStr = vdInput?.value || S.settings.dataDate;
+  const isViewingDataDate = viewDateStr === S.settings.dataDate;
+
   const total=results.length;
   const done=results.filter(r=>r.pct===100).length;
   const prog=results.filter(r=>r.pct>0&&r.pct<100).length;
   const delayed=results.filter(r=>r.schedDelay>0).length;
   const crit=results.filter(r=>r.critical).length;
-  const avgPct=Math.round(results.reduce((s,r)=>s+r.pct,0)/total);
-  const daysIn=diffWD(projStartD, dateDateD);
-  const plannedPct=Math.round(Math.min(100,daysIn/projDur*100));
-  const spi=(avgPct/plannedPct).toFixed(2);
-  const svar=avgPct-plannedPct;
+  // Weighted by Duration %
+  const totalDur = results.reduce((s,r)=>s+(r.dur||1),0);
+  const avgPct = totalDur>0
+    ? Math.round(results.reduce((s,r)=>s+r.pct*(r.dur||1),0)/totalDur)
+    : Math.round(results.reduce((s,r)=>s+r.pct,0)/total);
+  // Planned % at viewDate (Weighted by Duration)
+  const plannedPct = calcWeightedPlanned(results, viewDate, projStartD);
+  const spi = plannedPct>0 ? (avgPct/plannedPct).toFixed(2) : '—';
+  const svar = avgPct-plannedPct;
 
   document.getElementById('kpi-total').textContent=total;
   document.getElementById('kpi-done').textContent=done;
@@ -1610,7 +1862,7 @@ function renderDashboard(){
   document.getElementById('plan-bar').style.cssText=`width:${plannedPct}%;background:var(--line2)`;
   document.getElementById('actual-bar').style.cssText=`width:${avgPct}%;background:${avgPct>=plannedPct?'var(--green)':'var(--amber)'}`;
   document.getElementById('spi-val').textContent=spi;
-  document.getElementById('spi-val').style.color=spi>=1?'var(--green)':'var(--red)';
+  if(spi!=='—') document.getElementById('spi-val').style.color=parseFloat(spi)>=1?'var(--green)':'var(--red)';
   document.getElementById('svar-val').innerHTML=`<span style="color:${svar>=0?'var(--green)':'var(--red)'}">${svar>=0?'+':''}${svar}%</span>`;
 
   document.getElementById('info-proj').textContent=S.settings.name;
@@ -1619,43 +1871,113 @@ function renderDashboard(){
   document.getElementById('info-finish').textContent=ds(projFinish);
   document.getElementById('info-dur').textContent=projDur+' wd';
 
-  // Critical path
+  // ── View Date KPI row ──────────────────────────────────────────────────────
+  const vdKpi = document.getElementById('vdate-kpi-row');
+  if(vdKpi){
+    const svColor=svar>=0?'var(--green)':'var(--red)';
+    vdKpi.innerHTML=`
+      <div class="vdate-stat"><span class="vl">Plan% (weighted)</span><span class="vv" style="color:var(--accent)">${plannedPct}%</span></div>
+      <div class="vdate-stat"><span class="vl">Actual% (weighted)</span><span class="vv" style="color:${avgPct>=plannedPct?'var(--green)':'var(--amber)'}">${avgPct}%</span></div>
+      <div class="vdate-stat"><span class="vl">SV (Schedule Var.)</span><span class="vv" style="color:${svColor}">${svar>=0?'+':''}${svar}%</span></div>
+      <div class="vdate-stat"><span class="vl">SPI</span><span class="vv" style="color:${spi!=='—'&&parseFloat(spi)>=1?'var(--green)':'var(--red)'}">${spi}</span></div>
+      ${!isViewingDataDate?`<span style="font-family:var(--mono);font-size:9px;color:var(--gold);background:rgba(217,119,6,.1);border:1px solid rgba(217,119,6,.3);border-radius:3px;padding:3px 8px">⏱ ${viewDateStr}</span>`:''}`;
+  }
+
+  // ── Critical path ──────────────────────────────────────────────────────────
   const cpIds=S.results.topo.filter(id=>results.find(r=>r.id===id&&r.critical));
   const cpNames=cpIds.map(id=>{ const r=results.find(r=>r.id===id); return r?`<span style="color:var(--red)">${r.id}</span>`:'' });
   document.getElementById('cp-text').innerHTML=cpNames.join(' <span style="color:var(--txt3)">→</span> ');
 
-  // Phase breakdown
-  const l1Tasks={};
+  // ── S-Curve ───────────────────────────────────────────────────────────────
+  setTimeout(()=>renderSCurve(results, projStartD, projFinish, dateDateD), 50);
+
+  // ── Phase + Sub-phase Breakdown ──────────────────────────────────────────
+  const phGroups={};
+  const l1Names={}, l2Names={};
+  S.tasks.filter(t=>wbsLevel(t.wbs||'')==1).forEach(t=>{ l1Names[t.wbs]=t.name; });
+  S.tasks.filter(t=>wbsLevel(t.wbs||'')==2).forEach(t=>{ l2Names[t.wbs]=t.name; });
+
   results.forEach(r=>{
-    const l1=r.wbs?r.wbs.split('.')[0]:'?';
-    if(!l1Tasks[l1]) l1Tasks[l1]={tasks:[],name:''};
-    l1Tasks[l1].tasks.push(r);
-  });
-  // Get L1 names from summary tasks
-  S.tasks.filter(t=>wbsLevel(t.wbs||'')==1).forEach(t=>{
-    const k=t.wbs; if(l1Tasks[k]) l1Tasks[k].name=t.name;
+    const parts=(r.wbs||'').split('.');
+    const l1=parts[0]||'?';
+    const l2=parts.length>=2?parts.slice(0,2).join('.'):'';
+    if(!phGroups[l1]) phGroups[l1]={name:l1Names[l1]||'Phase '+l1,tasks:[],l2:{},durSum:0,wtPctSum:0};
+    const g=phGroups[l1];
+    g.tasks.push(r); g.durSum+=(r.dur||1); g.wtPctSum+=r.pct*(r.dur||1);
+    if(l2){
+      if(!g.l2[l2]) g.l2[l2]={name:l2Names[l2]||'Sub '+l2,tasks:[],durSum:0,wtPctSum:0};
+      const sg=g.l2[l2];
+      sg.tasks.push(r); sg.durSum+=(r.dur||1); sg.wtPctSum+=r.pct*(r.dur||1);
+    }
   });
 
-  const phHtml=Object.entries(l1Tasks).map(([k,v])=>{
-    const tasks=v.tasks; const s=summaries[k]||{};
-    const pct=tasks.reduce((a,t)=>a+t.pct,0)/tasks.length;
-    const dl=tasks.filter(t=>t.schedDelay>0).length;
-    return `<div class="phase-row">
-      <div class="phase-name"><span style="color:var(--txt3);font-family:var(--mono);font-size:9px">${k} &nbsp;</span>${v.name||tasks[0]?.phase||k}</div>
-      <div><div class="progress-track"><div class="progress-fill" style="width:${pct}%;background:${pct===100?'var(--green)':pct>0?'var(--accent)':'var(--line2)'}"></div></div></div>
-      <div style="font-family:var(--mono);font-size:11px;text-align:center">${Math.round(pct)}%</div>
-      <div style="text-align:center">${dl?`<span class="badge red">+${dl}</span>`:'<span class="badge green">✓</span>'}</div>
-      <div style="font-family:var(--mono);font-size:10px;color:var(--txt3)">${s.bl_finish||'—'}</div>
+  const headerRow=`<div style="display:grid;grid-template-columns:200px 1fr 64px 64px 64px 64px;gap:8px;
+    padding:0 0 8px;margin-bottom:4px;border-bottom:2px solid var(--line2)">
+    <span style="font-family:var(--mono);font-size:9px;color:var(--txt3);text-transform:uppercase">Phase / Sub-phase</span>
+    <span></span>
+    <span style="font-family:var(--mono);font-size:9px;color:var(--txt3);text-align:center;text-transform:uppercase">Plan%</span>
+    <span style="font-family:var(--mono);font-size:9px;color:var(--txt3);text-align:center;text-transform:uppercase">Actual%</span>
+    <span style="font-family:var(--mono);font-size:9px;color:var(--txt3);text-align:center;text-transform:uppercase">SV</span>
+    <span style="font-family:var(--mono);font-size:9px;color:var(--txt3);text-align:center;text-transform:uppercase">Delayed</span>
+  </div>`;
+
+  const phHtml=Object.entries(phGroups).map(([l1k,g])=>{
+    const actPct = g.durSum>0?Math.round(g.wtPctSum/g.durSum):0;
+    const planPct2 = calcWeightedPlanned(g.tasks, viewDate, projStartD);
+    const sv2 = actPct - planPct2;
+    const dl  = g.tasks.filter(t=>t.schedDelay>0).length;
+    const s   = summaries[l1k]||{};
+    const pctColor = actPct===100?'var(--green)':actPct>0?'var(--accent)':'var(--line2)';
+    const svColor2 = sv2>=0?'var(--green)':'var(--red)';
+    const dl_badge = dl?`<span class="badge red">+${dl}</span>`:'<span class="badge green">✓</span>';
+    const l2keys=Object.keys(g.l2);
+    const hasL2=l2keys.length>1;
+
+    let html=`<div class="phase-row l1" onclick="if(this.nextElementSibling){const d=this.nextElementSibling;d.style.display=d.style.display==='none'?'block':'none'}" style="cursor:${hasL2?'pointer':'default'};display:grid;grid-template-columns:200px 1fr 64px 64px 64px 64px;gap:8px;align-items:center">
+      <div class="phase-name"><span style="color:var(--txt3);font-family:var(--mono);font-size:9px">${l1k}&nbsp;</span>${hasL2?'▾ ':''}<b>${g.name}</b></div>
+      <div><div class="progress-track" style="height:7px;position:relative">
+        <div style="position:absolute;top:0;left:0;height:100%;width:${planPct2}%;background:rgba(20,104,179,.25);border-radius:3px"></div>
+        <div class="progress-fill" style="width:${actPct}%;background:${pctColor}"></div>
+      </div></div>
+      <div style="font-family:var(--mono);font-size:11px;text-align:center;color:var(--accent2)">${planPct2}%</div>
+      <div style="font-family:var(--mono);font-size:11px;text-align:center;font-weight:700;color:${pctColor}">${actPct}%</div>
+      <div style="font-family:var(--mono);font-size:11px;text-align:center;font-weight:600;color:${svColor2}">${sv2>=0?'+':''}${sv2}%</div>
+      <div style="text-align:center">${dl_badge}</div>
     </div>`;
+
+    if(hasL2){
+      html+=`<div>`;
+      l2keys.forEach(l2k=>{
+        const sg=g.l2[l2k];
+        const p2=sg.durSum>0?Math.round(sg.wtPctSum/sg.durSum):0;
+        const pp2=calcWeightedPlanned(sg.tasks, viewDate, projStartD);
+        const sv3=p2-pp2;
+        const d2=sg.tasks.filter(t=>t.schedDelay>0).length;
+        const done2=sg.tasks.filter(t=>t.pct===100).length;
+        const total2=sg.tasks.length;
+        const c2=p2===100?'var(--green)':p2>0?'var(--accent2)':'var(--line2)';
+        const sv3Color=sv3>=0?'var(--green)':'var(--red)';
+        html+=`<div style="display:grid;grid-template-columns:200px 1fr 64px 64px 64px 64px;gap:8px;align-items:center;padding:6px 0 6px 18px;border-bottom:1px dashed var(--line);background:var(--bg2)">
+          <div style="font-size:11px;color:var(--txt2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+            <span style="color:var(--txt3);font-family:var(--mono);font-size:8px">${l2k}&nbsp;</span>${sg.name}
+            <span style="font-family:var(--mono);font-size:9px;color:var(--txt3);margin-left:5px">${done2}/${total2}</span>
+          </div>
+          <div><div class="progress-track" style="height:5px;position:relative">
+            <div style="position:absolute;top:0;left:0;height:100%;width:${pp2}%;background:rgba(20,104,179,.2);border-radius:3px"></div>
+            <div class="progress-fill" style="width:${p2}%;background:${c2}"></div>
+          </div></div>
+          <div style="font-family:var(--mono);font-size:10px;text-align:center;color:var(--accent2)">${pp2}%</div>
+          <div style="font-family:var(--mono);font-size:10px;text-align:center;font-weight:600;color:${c2}">${p2}%</div>
+          <div style="font-family:var(--mono);font-size:10px;text-align:center;color:${sv3Color}">${sv3>=0?'+':''}${sv3}%</div>
+          <div style="text-align:center">${d2?`<span class="badge amber" style="font-size:8px">+${d2}</span>`:'<span class="badge green" style="font-size:8px">✓</span>'}</div>
+        </div>`;
+      });
+      html+=`</div>`;
+    }
+    return `<div style="margin-bottom:2px;border-bottom:1px solid var(--line)">${html}</div>`;
   }).join('');
-  document.getElementById('phase-breakdown').innerHTML=`
-    <div style="display:grid;grid-template-columns:180px 1fr 80px 60px 60px;gap:12px;padding:0 0 8px 0;margin-bottom:6px;border-bottom:1px solid var(--line)">
-      <span style="font-family:var(--mono);font-size:9px;color:var(--txt3);text-transform:uppercase">Phase</span>
-      <span></span>
-      <span style="font-family:var(--mono);font-size:9px;color:var(--txt3);text-align:center">Avg%</span>
-      <span style="font-family:var(--mono);font-size:9px;color:var(--txt3);text-align:center">Delayed</span>
-      <span style="font-family:var(--mono);font-size:9px;color:var(--txt3)">BL Finish</span>
-    </div>${phHtml}`;
+
+  document.getElementById('phase-breakdown').innerHTML=`<div style="padding:4px 0">${headerRow}${phHtml}</div>`;
 }
 
 function showKpiDrilldown(type){
