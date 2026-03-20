@@ -713,8 +713,9 @@ tr.lv3-row td:first-child{border-left:3px solid var(--line2)}
             <th style="width:40px">ID</th>
             <th style="width:56px">WBS</th>
             <th>Name</th>
-            <th style="width:130px">Phase</th>
+            <th style="width:110px">Phase</th>
             <th style="width:52px">Dur(d)</th>
+            <th style="width:100px">Pred</th>
             <th style="width:94px">Act.Start</th>
             <th style="width:94px">Act.Finish</th>
             <th style="width:44px">%</th>
@@ -1738,22 +1739,23 @@ function renderTasks(){
       ?`<span class="${t.pct===100?'badge green':t.pct>0?'badge amber':'badge grey'}">${t.pct}%</span>`:'—';
 
     return `<tr class="${rowCls}" id="tr-${i}">
-      <td><div class="ie-cell num" onclick="ieEdit(${i},'id',this)" title="กดเพื่อแก้ไข ID">${t.id}</div></td>
-      <td><div class="ie-cell num" onclick="ieEdit(${i},'wbs',this)" title="กดเพื่อแก้ไข WBS">${t.wbs||''}</div></td>
-      <td><div class="ie-cell name-cell" onclick="ieEdit(${i},'name',this)" title="กดเพื่อแก้ไข">${indent}<span style="font-weight:${lv<3?700:400};color:${isCrit?'var(--red)':'inherit'}">${t.name||'—'}</span></div></td>
-      <td><div class="ie-cell phase-cell" onclick="ieEditPhase(${i},this)" title="กดเพื่อแก้ไข Phase">${t.phase||'—'}</div></td>
-      <td><div class="ie-cell num" onclick="ieEdit(${i},'dur',this)" title="กดเพื่อแก้ไข Duration">${t.dur||0}</div></td>
-      <td><div class="ie-cell date-cell" style="color:var(--green)" onclick="ieEditDate(${i},'actualStart',this)" title="Actual Start">${t.actualStart||'—'}</div></td>
-      <td><div class="ie-cell date-cell" style="color:var(--green)" onclick="ieEditDate(${i},'actualFinish',this)" title="Actual Finish">${t.actualFinish||'—'}</div></td>
-      <td><div class="ie-cell num" onclick="ieEdit(${i},'pct',this)" title="กดเพื่อแก้ไข %">${pctBadge}</div></td>
-      <td><div class="ie-cell date-cell" style="color:var(--txt3)" onclick="ieEditDate(${i},'blStart',this)" title="BL Start">${t.blStart||'—'}</div></td>
-      <td><div class="ie-cell date-cell" style="color:var(--txt3)" onclick="ieEditDate(${i},'blFinish',this)" title="BL Finish">${t.blFinish||'—'}</div></td>
+      <td><div class="ie-cell num" onclick="ieEdit(${i},'id',this)" title="แก้ไข ID">${t.id}</div></td>
+      <td><div class="ie-cell num" onclick="ieEdit(${i},'wbs',this)" title="แก้ไข WBS">${t.wbs||''}</div></td>
+      <td><div class="ie-cell name-cell" onclick="ieEdit(${i},'name',this)" title="แก้ไข">${indent}<span style="font-weight:${lv<3?700:400};color:${isCrit?'var(--red)':'inherit'}">${t.name||'—'}</span></div></td>
+      <td><div class="ie-cell phase-cell" onclick="ieEditPhase(${i},this)" title="แก้ไข Phase">${t.phase||'—'}</div></td>
+      <td><div class="ie-cell num" onclick="ieEdit(${i},'dur',this)" title="แก้ไข Duration">${t.dur||0}</div></td>
+      <td><div class="ie-cell pred-cell" onclick="ieEdit(${i},'predecessors',this)" title="แก้ไข Predecessors">${t.predecessors||'—'}</div></td>
+      <td><div class="ie-cell date-cell" style="color:var(--green)" onclick="ieEditDate(${i},'actualStart',this)">${t.actualStart||'—'}</div></td>
+      <td><div class="ie-cell date-cell" style="color:var(--green)" onclick="ieEditDate(${i},'actualFinish',this)">${t.actualFinish||'—'}</div></td>
+      <td><div class="ie-cell num" onclick="ieEdit(${i},'pct',this)">${pctBadge}</div></td>
+      <td><div class="ie-cell date-cell" style="color:var(--txt3)" onclick="ieEditDate(${i},'blStart',this)">${t.blStart||'—'}</div></td>
+      <td><div class="ie-cell date-cell" style="color:var(--txt3)" onclick="ieEditDate(${i},'blFinish',this)">${t.blFinish||'—'}</div></td>
       <td style="text-align:center">${tfDisp}</td>
       <td>${statusBadge}</td>
       <td>
         <div class="row-actions">
-          <button class="row-btn" onclick="indentTask(${i})" title="เพิ่มระดับ (indent)">→</button>
-          <button class="row-btn" onclick="outdentTask(${i})" title="ลดระดับ (outdent)">←</button>
+          <button class="row-btn" onclick="indentTask(${i})" title="เพิ่มระดับ (→)">→</button>
+          <button class="row-btn" onclick="outdentTask(${i})" title="ลดระดับ (←)">←</button>
           <button class="row-btn primary" onclick="addTaskAfter(${i})" title="เพิ่มงานต่อท้าย">+</button>
           <button class="row-btn danger" onclick="deleteTask(${i})" title="ลบงาน">✕</button>
         </div>
@@ -1795,10 +1797,17 @@ function ieEdit(idx, field, cell){
     pushUndo('Edit '+field);
     t[field]=newVal;
 
-    // Smart: if dur changed → recalc finish from start+dur
-    if(field==='dur' && t.actualStart){
-      const newFinish=addWD(pd(t.actualStart), t.dur);
-      if(newFinish) t.actualFinish=ds(newFinish);
+    // Smart: if dur changed → recalc dates
+    if(field==='dur'){
+      if(t.actualStart && !t.actualFinish){
+        // Start+dur → finish
+        const nf=addWD(pd(t.actualStart), t.dur);
+        if(nf){ t.actualFinish=ds(nf); showCalcBadge(idx,'⟳ finish='+t.actualFinish); }
+      } else if(!t.actualStart && t.blStart && !t.blFinish){
+        // BLStart+dur → BLFinish
+        const nf=addWD(pd(t.blStart), t.dur);
+        if(nf){ t.blFinish=ds(nf); showCalcBadge(idx,'⟳ BLfin='+t.blFinish); }
+      }
     }
     saveToStorage();
     if(S.tasks.length) runCPM(); else renderTasks();
@@ -1855,37 +1864,37 @@ function ieEditDate(idx, field, cell){
     const newVal=inp.value||null;
     if(newVal===old||(!newVal&&!old)){ renderTasks(); return; }
     pushUndo('Edit '+field);
-    t[field]=newVal;
+    t[field]=newVal;  // assign first
 
-    // ── Smart date/duration logic ─────────────────────────────────────────
+    // ── Smart date/duration logic — read t after assignment ───────────────
+    const aS=t.actualStart, aF=t.actualFinish;
+    const bS=t.blStart,     bF=t.blFinish;
+
     if(field==='actualStart'||field==='actualFinish'){
-      const aS=t.actualStart, aF=t.actualFinish;
       if(aS && aF){
-        // Both dates → recalc duration
+        // Both actual dates → recalc duration
         const newDur=diffWD(pd(aS), pd(aF));
-        if(newDur>0){ t.dur=newDur; showCalcBadge(idx,'dur='+newDur+'d'); }
-      } else if(field==='actualStart' && t.dur>0 && !aF){
-        // Start + duration → calc finish
+        if(newDur>0){ t.dur=newDur; showCalcBadge(idx,'⟳ dur='+newDur+'d'); }
+      } else if(field==='actualStart' && aS && t.dur>0){
+        // Start + dur → calc Actual Finish
         const newFin=addWD(pd(aS), t.dur);
-        t.actualFinish=ds(newFin);
-        showCalcBadge(idx,'finish='+t.actualFinish);
-      } else if(field==='actualFinish' && t.actualStart && !t.dur){
+        if(newFin){ t.actualFinish=ds(newFin); showCalcBadge(idx,'⟳ finish='+t.actualFinish); }
+      } else if(field==='actualFinish' && aF && aS && !t.dur){
         // Finish + start → calc dur
-        const d=diffWD(pd(t.actualStart), pd(aF));
-        if(d>0){ t.dur=d; showCalcBadge(idx,'dur='+d+'d'); }
+        const d=diffWD(pd(aS), pd(aF));
+        if(d>0){ t.dur=d; showCalcBadge(idx,'⟳ dur='+d+'d'); }
       }
-      // Auto % if both actual set
-      if(t.actualStart && t.actualFinish && t.pct===0) t.pct=100;
+      if(t.actualStart && t.actualFinish && t.pct<100) t.pct=100;
     }
     if(field==='blStart'||field==='blFinish'){
-      const bS=t.blStart, bF=t.blFinish;
-      if(bS && bF && !t.dur){
-        const d=diffWD(pd(bS), pd(bF));
-        if(d>0){ t.dur=d; showCalcBadge(idx,'dur='+d+'d'); }
-      } else if(field==='blStart' && t.dur>0 && !bF){
+      if(bS && bF){
+        // Both BL dates → recalc duration if not set
+        if(!t.dur){ const d=diffWD(pd(bS),pd(bF)); if(d>0){t.dur=d;showCalcBadge(idx,'⟳ dur='+d+'d');} }
+      } else if(field==='blStart' && bS && t.dur>0 && !bF){
         const newBF=addWD(pd(bS), t.dur);
-        t.blFinish=ds(newBF);
-        showCalcBadge(idx,'BLfin='+t.blFinish);
+        if(newBF){ t.blFinish=ds(newBF); showCalcBadge(idx,'⟳ BLfin='+t.blFinish); }
+      } else if(field==='blFinish' && bF && bS && !t.dur){
+        const d=diffWD(pd(bS),pd(bF)); if(d>0){t.dur=d;showCalcBadge(idx,'⟳ dur='+d+'d');}
       }
     }
     saveToStorage();
@@ -1914,7 +1923,8 @@ function showCalcBadge(idx, msg){
 
 // Tab navigation between cells
 function moveToNextCell(idx, field, back){
-  const order=['name','dur','actualStart','actualFinish','pct','blStart','blFinish'];
+  const order=['name','dur','predecessors','actualStart','actualFinish','pct','blStart','blFinish'];
+  const colMap={'name':2,'dur':4,'predecessors':5,'actualStart':6,'actualFinish':7,'pct':8,'blStart':9,'blFinish':10};
   const ci=order.indexOf(field);
   let ni=back?ci-1:ci+1;
   let nIdx=idx;
@@ -1923,9 +1933,8 @@ function moveToNextCell(idx, field, back){
   setTimeout(()=>{
     const tr=document.getElementById('tr-'+nIdx);
     if(!tr) return;
-    const cells=tr.querySelectorAll('.ie-cell');
-    const fieldCells={'name':1,'dur':2,'actualStart':3,'actualFinish':4,'pct':5,'blStart':6,'blFinish':7};
-    const c=tr.querySelectorAll('td')[fieldCells[order[ni]]||0]?.querySelector('.ie-cell');
+    const col=colMap[order[ni]];
+    const c=tr.querySelectorAll('td')[col]?.querySelector('.ie-cell');
     if(c) c.click();
   }, 50);
 }
@@ -1935,49 +1944,57 @@ function moveToNextCell(idx, field, back){
 // ═══════════════════════════════════════════════════════════════════════════════
 
 function indentTask(idx){
-  // เพิ่มระดับ: ใช้ task บรรทัดก่อนเป็น parent
   if(idx===0){ toast('ไม่มีงานข้างบนให้อ้างอิง','error'); return; }
   pushUndo('Indent Task');
   const t=S.tasks[idx];
   const prev=S.tasks[idx-1];
-  const prevWbs=prev.wbs||'1';
-  const prevParts=prevWbs.split('.');
-  const curParts=(t.wbs||'').split('.');
-
-  // หา parent WBS: ถ้า prev เป็น level 1 → ใส่ t ไว้ใต้ prev เป็น level 2
-  // ถ้า prev เป็น level 2 → ใส่ t ไว้ใต้ prev เป็น level 3
+  const prevParts=(prev.wbs||'1').split('.');
   const prevLv=prevParts.length;
   if(prevLv>=3){ toast('ระดับสูงสุดคือ 3 แล้ว','error'); return; }
 
-  // นับ child ของ prev แล้ว +1
   const parentWbs=prevParts.join('.');
-  const children=S.tasks.filter((x,xi)=>xi!==idx && (x.wbs||'').startsWith(parentWbs+'.') && x.wbs.split('.').length===prevLv+1);
-  const nextNum=(children.length>0 ? Math.max(...children.map(x=>parseInt(x.wbs.split('.').pop())||0)) : 0)+1;
+  const children=S.tasks.filter((x,xi)=>xi!==idx &&
+    (x.wbs||'').startsWith(parentWbs+'.') &&
+    x.wbs.split('.').length===prevLv+1);
+  const nextNum=(children.length>0
+    ? Math.max(...children.map(x=>parseInt(x.wbs.split('.').pop())||0))
+    : 0)+1;
   t.wbs=parentWbs+'.'+nextNum;
 
-  // Auto ID ถ้า level ลึกขึ้น
+  // Auto Phase: สืบทอดจาก parent task
+  const parentTask=S.tasks.find(x=>x.wbs===parentWbs);
+  if(parentTask && !t.phase) t.phase=parentTask.phase||prev.phase||t.phase;
+  else if(!t.phase) t.phase=prev.phase||t.phase;
+
   saveToStorage();
   if(S.tasks.length) runCPM(); else renderTasks();
-  toast(`Indent → WBS ${t.wbs}`);
+  toast(`→ Indent WBS ${t.wbs} | Phase: ${t.phase||'—'}`);
 }
 
 function outdentTask(idx){
-  // ลดระดับ: ขยับขึ้นมา 1 ระดับ
   const t=S.tasks[idx];
   const parts=(t.wbs||'').split('.');
   if(parts.length<=1){ toast('อยู่ระดับสูงสุดแล้ว','error'); return; }
   pushUndo('Outdent Task');
 
-  // หา sibling ของ parent แล้ว assign wbs ถัดไป
   const grandParent=parts.slice(0,-2).join('.');
   const parentLevel=parts.length-1;
-  const siblings=S.tasks.filter((x,xi)=>xi!==idx && (x.wbs||'').split('.').length===parentLevel && (grandParent?x.wbs.startsWith(grandParent+'.'):!x.wbs.includes('.')));
-  const nextNum=(siblings.length>0?Math.max(...siblings.map(x=>parseInt(x.wbs.split('.').pop())||0)):0)+1;
+  const siblings=S.tasks.filter((x,xi)=>xi!==idx &&
+    (x.wbs||'').split('.').length===parentLevel &&
+    (grandParent ? x.wbs.startsWith(grandParent+'.') : !x.wbs.includes('.')));
+  const nextNum=(siblings.length>0
+    ? Math.max(...siblings.map(x=>parseInt(x.wbs.split('.').pop())||0))
+    : 0)+1;
   t.wbs=grandParent?(grandParent+'.'+nextNum):String(nextNum);
+
+  // Auto Phase: หา phase ของ sibling/parent ที่อยู่ระดับเดียวกันหลัง outdent
+  const newLv=t.wbs.split('.').length;
+  const sameLevel=S.tasks.filter((x,xi)=>xi!==idx && (x.wbs||'').split('.').length===newLv);
+  if(sameLevel.length>0 && !t.phase) t.phase=sameLevel[sameLevel.length-1].phase||t.phase;
 
   saveToStorage();
   if(S.tasks.length) runCPM(); else renderTasks();
-  toast(`Outdent → WBS ${t.wbs}`);
+  toast(`← Outdent WBS ${t.wbs}`);
 }
 
 function addTaskAfter(idx){
