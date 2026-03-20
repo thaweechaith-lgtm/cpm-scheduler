@@ -241,7 +241,8 @@ thead th{
 thead th:hover{color:var(--txt2)}
 tbody tr{border-bottom:1px solid var(--line);transition:background .1s}
 tbody tr:last-child{border-bottom:none}
-tbody tr:hover{background:#EBF3FA}
+tbody tr:hover{background:#EBF3FA;cursor:pointer}
+tbody tr:active{background:#D6E8F7}
 tbody td{
   font-family:var(--mono);font-size:11px;color:var(--txt2);
   padding:8px 12px;white-space:nowrap;
@@ -1376,7 +1377,7 @@ function openAddTask(){
     <div class="form-grid cols-3">
       <div class="form-row"><label>Activity ID</label><input id="f-id" type="number" placeholder="e.g. 1010"></div>
       <div class="form-row"><label>WBS</label><input id="f-wbs" type="text" placeholder="e.g. 1.2.3"></div>
-      <div class="form-row"><label>Duration (days, 0=Summary)</label><input id="f-dur" type="number" value="0" min="0"></div>
+      <div class="form-row"><label>Duration (วันทำงาน, 0=Summary)</label><input id="f-dur" type="number" value="0" min="0"></div>
     </div>
     <div class="form-grid cols-1">
       <div class="form-row"><label>Activity Name</label><input id="f-name" type="text" placeholder="Activity name"></div>
@@ -1402,10 +1403,20 @@ function openAddTask(){
         </div>
       </div>
     </div>
-    <div class="form-grid cols-3">
-      <div class="form-row"><label>Plan Start</label><input id="f-as" type="date"></div>
-      <div class="form-row"><label>Plan Finish</label><input id="f-af" type="date"></div>
-      <div class="form-row"><label>% Complete (0-100)</label><input id="f-pct" type="number" value="0" min="0" max="100"></div>
+    <div style="background:rgba(22,163,74,.06);border:1px solid rgba(22,163,74,.25);border-radius:6px;padding:12px 14px;margin-bottom:10px">
+      <div style="font-family:var(--mono);font-size:9px;color:var(--green);font-weight:700;letter-spacing:.6px;text-transform:uppercase;margin-bottom:10px">✅ Actual Date (วันที่ทำงานจริง)</div>
+      <div class="form-grid cols-3">
+        <div class="form-row"><label>Actual Start</label><input id="f-as" type="date"></div>
+        <div class="form-row"><label>Actual Finish</label><input id="f-af" type="date"></div>
+        <div class="form-row"><label>% Complete (0-100)</label><input id="f-pct" type="number" value="0" min="0" max="100"></div>
+      </div>
+    </div>
+    <div style="background:rgba(100,116,139,.06);border:1px solid rgba(100,116,139,.25);border-radius:6px;padding:12px 14px">
+      <div style="font-family:var(--mono);font-size:9px;color:var(--txt3);font-weight:700;letter-spacing:.6px;text-transform:uppercase;margin-bottom:10px">📌 Baseline Date (ถ้าว่าง Set Baseline จะเขียนให้อัตโนมัติ)</div>
+      <div class="form-grid cols-2">
+        <div class="form-row"><label>BL Start</label><input id="f-bls" type="date"></div>
+        <div class="form-row"><label>BL Finish</label><input id="f-blf" type="date"></div>
+      </div>
     </div>
   `, `<button class="btn" onclick="closeModal()">Cancel</button><button class="btn primary" onclick="saveTask(-1)">Add Task</button>`);
 }
@@ -1486,13 +1497,25 @@ function autoFillWbsId(){
 
 function editTask(idx){
   const t=S.tasks[idx];
-  const phases=getPhases(); const phaseOpts=phases.map(p=>`<option${p===t.phase?' selected':''}>${p}</option>`).join('');
+  const phases=getPhases();
+  const phaseOpts=phases.map(p=>`<option${p===t.phase?' selected':''}>${p}</option>`).join('');
   const taskOpts=S.tasks.filter(tt=>tt.dur>0&&tt.id!==t.id).map(tt=>`<option value="${tt.id}">${tt.id} — ${tt.name}</option>`).join('');
+  // Safe date values — ensure format YYYY-MM-DD only (prevent year bug)
+  const safeDate = v => {
+    if(!v) return '';
+    const m = String(v).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    return m ? v : '';
+  };
+  const actS  = safeDate(t.actualStart);
+  const actF  = safeDate(t.actualFinish);
+  const blS   = safeDate(t.blStart);
+  const blF   = safeDate(t.blFinish);
+
   openModal('Edit Task', `
     <div class="form-grid cols-3">
       <div class="form-row"><label>Activity ID</label><input id="f-id" type="number" value="${t.id}"></div>
       <div class="form-row"><label>WBS</label><input id="f-wbs" type="text" value="${t.wbs||''}"></div>
-      <div class="form-row"><label>Duration</label><input id="f-dur" type="number" value="${t.dur||0}" min="0"></div>
+      <div class="form-row"><label>Duration (วันทำงาน)</label><input id="f-dur" type="number" value="${t.dur||0}" min="0"></div>
     </div>
     <div class="form-grid cols-1">
       <div class="form-row"><label>Name</label><input id="f-name" type="text" value="${t.name||''}"></div>
@@ -1518,12 +1541,26 @@ function editTask(idx){
         </div>
       </div>
     </div>
-    <div class="form-grid cols-3">
-      <div class="form-row"><label>Plan Start (Actual)</label><input id="f-as" type="date" value="${t.actualStart||''}"></div>
-      <div class="form-row"><label>Plan Finish (Actual)</label><input id="f-af" type="date" value="${t.actualFinish||''}"></div>
-      <div class="form-row"><label>% Complete</label><input id="f-pct" type="number" value="${t.pct||0}" min="0" max="100"></div>
+
+    <div style="background:rgba(22,163,74,.06);border:1px solid rgba(22,163,74,.25);border-radius:6px;padding:12px 14px;margin-bottom:12px">
+      <div style="font-family:var(--mono);font-size:9px;color:var(--green);font-weight:700;letter-spacing:.6px;text-transform:uppercase;margin-bottom:10px">✅ Actual Date (วันที่ทำงานจริง)</div>
+      <div class="form-grid cols-3">
+        <div class="form-row"><label>Actual Start</label><input id="f-as" type="date" value="${actS}"></div>
+        <div class="form-row"><label>Actual Finish</label><input id="f-af" type="date" value="${actF}"></div>
+        <div class="form-row"><label>% Complete</label><input id="f-pct" type="number" value="${t.pct||0}" min="0" max="100"></div>
+      </div>
     </div>
-  `, `<button class="btn danger" onclick="deleteTask(${idx})">Delete</button><button class="btn" onclick="closeModal()">Cancel</button><button class="btn primary" onclick="saveTask(${idx})">Save</button>`);
+
+    <div style="background:rgba(100,116,139,.06);border:1px solid rgba(100,116,139,.25);border-radius:6px;padding:12px 14px">
+      <div style="font-family:var(--mono);font-size:9px;color:var(--txt3);font-weight:700;letter-spacing:.6px;text-transform:uppercase;margin-bottom:10px">📌 Baseline Date (วันแผน — ถ้าว่างจะถูก Set Baseline เขียนทับ)</div>
+      <div class="form-grid cols-2">
+        <div class="form-row"><label>BL Start</label><input id="f-bls" type="date" value="${blS}"></div>
+        <div class="form-row"><label>BL Finish</label><input id="f-blf" type="date" value="${blF}"></div>
+      </div>
+    </div>
+  `, `<button class="btn danger" onclick="deleteTask(${idx})">Delete</button>
+      <button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn primary" onclick="saveTask(${idx})">Save</button>`);
 }
 
 // ── WBS comparison for sorting ───────────────────────────────────────────────
@@ -1559,6 +1596,8 @@ function saveTask(idx){
   pushUndo(idx===-1?'Add Task':'Edit Task');
   const id=parseInt(document.getElementById('f-id').value);
   if(!id){ toast('Activity ID required','error'); return; }
+  const blsEl = document.getElementById('f-bls');
+  const blfEl = document.getElementById('f-blf');
   const t={
     id, wbs:document.getElementById('f-wbs').value.trim(),
     name:document.getElementById('f-name').value.trim(),
@@ -1569,8 +1608,8 @@ function saveTask(idx){
     actualStart:document.getElementById('f-as').value||null,
     actualFinish:document.getElementById('f-af').value||null,
     pct:Math.max(0,Math.min(100,parseInt(document.getElementById('f-pct').value)||0)),
-    blStart: idx>=0 ? S.tasks[idx].blStart : null,
-    blFinish: idx>=0 ? S.tasks[idx].blFinish : null,
+    blStart:  blsEl ? (blsEl.value||null) : (idx>=0 ? S.tasks[idx].blStart : null),
+    blFinish: blfEl ? (blfEl.value||null) : (idx>=0 ? S.tasks[idx].blFinish : null),
     TF:null, status:'Not Started'
   };
   if(idx===-1){
@@ -1611,21 +1650,21 @@ function renderTasks(){
     const indent='&nbsp;'.repeat((lv-1)*4);
     const statusBadge=t.status?statusBadgeHTML(t.status):'';
     const tfDisp=t.TF!=null&&t.dur>0?`<span class="badge ${t.TF===0?'red':t.TF<=5?'amber':'grey'}">${t.TF}d</span>`:'—';
-    return `<tr class="${cls}">
+    return `<tr class="${cls}" onclick="editTask(${i})" style="cursor:pointer" title="คลิกเพื่อแก้ไข">
       <td><span class="badge blue">${t.id}</span></td>
       <td><span style="font-family:var(--mono);font-size:10px">${t.wbs||''}</span></td>
       <td class="name-col">${indent}${lv<3?'<b>':' '}${t.name||''}${lv<3?'</b>':''}</td>
       <td>${t.phase||''}</td>
       <td style="text-align:center">${t.dur||0}</td>
       <td style="color:var(--accent2)">${t.predecessors||''}</td>
-      <td>${t.actualStart||''}</td>
-      <td>${t.actualFinish||''}</td>
+      <td style="color:var(--green)">${t.actualStart||''}</td>
+      <td style="color:var(--green)">${t.actualFinish||''}</td>
       <td style="text-align:center">${t.dur>0?`<span class="${t.pct===100?'badge green':t.pct>0?'badge amber':'badge grey'}">${t.pct}%</span>`:'—'}</td>
       <td style="color:var(--txt3);font-size:10px">${t.blStart||'—'}</td>
       <td style="color:var(--txt3);font-size:10px">${t.blFinish||'—'}</td>
       <td>${tfDisp}</td>
       <td>${statusBadge}</td>
-      <td><button class="btn" style="padding:3px 8px;font-size:10px" onclick="editTask(${i})">Edit</button></td>
+      <td onclick="event.stopPropagation()"><button class="btn" style="padding:3px 8px;font-size:10px" onclick="editTask(${i})">✏</button></td>
     </tr>`;
   }).join('');
 }
