@@ -3140,14 +3140,14 @@ function renderGantt(){
     // Summary/rollup tasks: ▐ (L1) or ▾ (L2) — Activity tasks: ▸ (L2) or ▪ (L3)
     const indent = isSum
       ? (lv===1 ? '▐ ' : lv===2 ? '  ▾ ' : '    ▾ ')
-      : (lv===1 ? '' : lv===2 ? '  ▸ ' : '      ');
+      : (lv===1 ? '' : lv===2 ? '  ▸ ' : '    ▪ ');
     const pct=r?r.pct:(s?s.pct:0);
     const ROW_H = 36;
     const taskIdx = S.tasks.indexOf(t);
 
     // Editable values
-    const actSdisp = t.actualStart ? t.actualStart.slice(5) : '—';
-    const actFdisp = t.actualFinish ? t.actualFinish.slice(5) : '—';
+    const actSdisp = t.actualStart ? fmtD(t.actualStart) : '—';
+    const actFdisp = t.actualFinish ? fmtD(t.actualFinish) : '—';
     const actScolor = t.actualStart ? 'var(--green)' : 'var(--txt3)';
     const actFcolor = t.actualFinish ? 'var(--green)' : 'var(--txt3)';
     const pctColor = pct===100?'var(--green)':pct>0?'var(--gold)':'var(--txt3)';
