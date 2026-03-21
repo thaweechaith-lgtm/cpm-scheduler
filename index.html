@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>CPM Scheduler — EGAT</title>
+<title>JK01 — CPM Scheduler</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=Syne:wght@600;700;800&family=Sarabun:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -57,11 +57,20 @@ body{font-family:var(--sans);background:var(--bg0);color:var(--txt);font-size:13
   box-shadow:0 1px 4px rgba(0,0,0,.06);
 }
 #topbar .logo{
-  font-family:var(--display);font-size:16px;font-weight:800;
-  color:var(--txt);letter-spacing:-.3px;
   display:flex;align-items:center;gap:8px;white-space:nowrap;
   border-right:2px solid var(--accent); padding-right:14px; margin-right:2px;
+  cursor:default;
 }
+.logo-badge{
+  width:36px;height:36px;border-radius:50%;
+  background:var(--accent);color:#fff;
+  font-family:var(--display);font-size:11px;font-weight:800;letter-spacing:.5px;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 2px 6px rgba(20,104,179,.4);
+  flex-shrink:0;
+}
+.logo-text{font-family:var(--display);font-size:13px;font-weight:700;color:var(--txt);letter-spacing:-.2px;}
+.logo-text span{color:var(--accent)}
 #topbar .logo span{color:var(--accent)}
 #topbar .proj-name{
   font-family:var(--mono);font-size:12px;
@@ -570,7 +579,10 @@ tr.lv3-row td:first-child{border-left:3px solid var(--line2)}
 
 <!-- Topbar -->
 <div id="topbar">
-  <div class="logo">⬡ <span>CPM</span>SCHED</div>
+  <div class="logo">
+    <div class="logo-badge">CPM</div>
+    <div class="logo-text">Scheduler <span>Pro</span></div>
+  </div>
   <div class="proj-name" id="topbar-proj">No project loaded</div>
   <div class="spacer"></div>
   <div class="data-date-badge" id="topbar-date">Data Date: —</div>
@@ -595,6 +607,9 @@ tr.lv3-row td:first-child{border-left:3px solid var(--line2)}
   </div>
   <div class="tab" onclick="switchTab('schedule')" id="tab-schedule">
     <span class="dot"></span>SCHEDULE
+  </div>
+  <div class="tab" onclick="switchTab('blcompare')" id="tab-blcompare">
+    <span class="dot"></span>BL COMPARE
   </div>
   <div class="tab" onclick="switchTab('delay')" id="tab-delay">
     <span class="dot"></span>DELAY ANALYSIS
@@ -713,14 +728,13 @@ tr.lv3-row td:first-child{border-left:3px solid var(--line2)}
             <th style="width:40px">ID</th>
             <th style="width:56px">WBS</th>
             <th>Name</th>
-            <th style="width:110px">Phase</th>
             <th style="width:52px">Dur(d)</th>
             <th style="width:100px">Pred</th>
             <th style="width:94px">Act.Start</th>
             <th style="width:94px">Act.Finish</th>
             <th style="width:44px">%</th>
-            <th style="width:94px">BL Start</th>
-            <th style="width:94px">BL Finish</th>
+            <th style="width:94px">Start</th>
+            <th style="width:94px">Finish</th>
             <th style="width:38px">TF</th>
             <th style="width:80px">Status</th>
             <th style="width:110px">Actions</th>
@@ -757,16 +771,17 @@ tr.lv3-row td:first-child{border-left:3px solid var(--line2)}
       <button class="btn" onclick="toggleSummaryRows()">Σ</button>
       <div class="sep"></div>
       <span class="lbl">From:</span>
-      <input id="g-view-start" type="date" onchange="setViewRange()" style="font-family:var(--mono);font-size:10px;padding:2px 4px;border:1px solid var(--line2);border-radius:3px;background:var(--bg1);color:var(--txt);flex-shrink:0;width:108px">
+      <input id="g-view-start" type="text" placeholder="MM/DD/YYYY" onchange="setViewRange()" style="font-family:var(--mono);font-size:10px;padding:2px 4px;border:1px solid var(--line2);border-radius:3px;background:var(--bg1);color:var(--txt);flex-shrink:0;width:108px">
       <span class="lbl">To:</span>
-      <input id="g-view-end" type="date" onchange="setViewRange()" style="font-family:var(--mono);font-size:10px;padding:2px 4px;border:1px solid var(--line2);border-radius:3px;background:var(--bg1);color:var(--txt);flex-shrink:0;width:108px">
+      <input id="g-view-end" type="text" placeholder="MM/DD/YYYY" onchange="setViewRange()" style="font-family:var(--mono);font-size:10px;padding:2px 4px;border:1px solid var(--line2);border-radius:3px;background:var(--bg1);color:var(--txt);flex-shrink:0;width:108px">
       <button class="btn" onclick="resetViewRange()" style="padding:2px 7px;font-size:10px" title="Reset to full project">↺</button>
       <div class="sep"></div>
-      <span class="lbl">BL:</span>
-      <select id="bl-selector" onchange="switchBaseline(parseInt(this.value))">
+      <button class="btn" onclick="fitGantt()" title="Fit ให้เห็นทั้งโปรเจค" style="padding:2px 7px;font-size:11px;flex-shrink:0">⊡ Fit</button>
+      <div class="sep"></div>
+      <span class="lbl" style="flex-shrink:0">BL:</span>
+      <select id="bl-selector" onchange="switchBaseline(parseInt(this.value))" style="max-width:90px;font-size:10px">
         <option value="-1">— None —</option>
       </select>
-      <button class="btn" id="btn-del-bl" onclick="deleteBaseline(S.activeBL)" style="padding:2px 5px;font-size:9px;color:var(--red);display:none">✕</button>
       <div style="flex:1;min-width:4px"></div>
       <div style="display:flex;gap:6px;font-family:var(--mono);font-size:8px;align-items:center;flex-shrink:0;color:var(--txt3)">
         <span style="display:flex;gap:2px;align-items:center"><span style="width:10px;height:4px;background:#999;display:block"></span>BL</span>
@@ -824,6 +839,22 @@ tr.lv3-row td:first-child{border-left:3px solid var(--line2)}
     </div>
   </div>
 
+  <!-- Baseline Compare -->
+  <div class="panel" id="panel-blcompare">
+    <div class="btn-row">
+      <button class="btn success" onclick="renderBaselineCompare()">↺ Refresh</button>
+      <span style="font-family:var(--mono);font-size:10px;color:var(--txt3);align-self:center">
+        เปรียบเทียบ Start/Finish ของแผนปัจจุบัน vs Baselines ที่บันทึกไว้
+      </span>
+    </div>
+    <div class="tbl-wrap">
+      <table id="blcompare-table">
+        <thead id="blcompare-head"></thead>
+        <tbody id="blcompare-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
   <!-- Delay Analysis -->
   <div class="panel" id="panel-delay">
     <div id="delay-summary" style="margin-bottom:20px"></div>
@@ -841,9 +872,9 @@ tr.lv3-row td:first-child{border-left:3px solid var(--line2)}
           <div class="form-row"><label>Project Manager</label>
             <input id="s-pm" type="text" value="วิศวกร ผู้จัดการ"></div>
           <div class="form-row"><label>Project Start Date</label>
-            <input id="s-start" type="date" value="2025-01-06"></div>
+            <input id="s-start" type="text" placeholder="MM/DD/YYYY" value="2025-01-06"></div>
           <div class="form-row"><label>Data Date (สถานะวันนี้)</label>
-            <input id="s-data" type="date" value="2025-02-07"></div>
+            <input id="s-data" type="text" placeholder="MM/DD/YYYY" value="2025-02-07"></div>
           <div class="form-row"><label>Working Days / Week</label>
             <select id="s-wdays"><option value="5" selected>5 วัน (จ–ศ)</option><option value="6">6 วัน (จ–ส)</option><option value="7">7 วัน (ทุกวัน)</option></select></div>
           <div class="form-row" style="grid-column:1/-1">
@@ -862,6 +893,29 @@ tr.lv3-row td:first-child{border-left:3px solid var(--line2)}
           <button class="btn" onclick="document.getElementById('import-json').click()">📂 Import Project JSON</button>
           <input type="file" id="import-json" accept=".json" style="display:none" onchange="importProjectJSON(event)">
           <input type="file" id="import-xlsx" accept=".xlsx,.xls" style="display:none" onchange="handleImportExcel(event)">
+        </div>
+      </div>
+    </div>
+    <div class="settings-block">
+      <div class="section-title">Phase / Discipline Summary <span style="font-size:10px;color:var(--txt3);font-weight:400;text-transform:none">— auto-generated จาก WBS Hierarchy</span></div>
+      <div class="card" style="padding:12px 16px">
+        <div id="phase-summary-list" style="font-family:var(--mono);font-size:11px;color:var(--txt2)">
+          <span style="color:var(--txt3)">กด Save Settings หรือ Calculate CPM เพื่อ refresh</span>
+        </div>
+        <div style="margin-top:10px;display:flex;gap:8px">
+          <button class="btn" onclick="autoAssignPhases();renderPhaseSummary();toast('Phase updated')">↺ Re-derive Phases</button>
+        </div>
+      </div>
+    </div>
+    <div class="settings-block">
+      <div class="section-title">Baseline Management</div>
+      <div class="card" style="padding:14px 16px">
+        <div id="bl-manage-list" style="font-family:var(--mono);font-size:11px;color:var(--txt2);margin-bottom:10px">
+          <span style="color:var(--txt3)">ยังไม่มี Baseline</span>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn primary" onclick="setBaseline()" style="font-size:10px">📌 Set Baseline ใหม่</button>
+          <button class="btn" onclick="renderBLManageList()" style="font-size:10px">↺ Refresh</button>
         </div>
       </div>
     </div>
@@ -995,12 +1049,17 @@ function setBaseline(){
   writeBLToTasks();
   saveToStorage(); refreshAll(); updateBLSelector();
   toast(`✅ ${S.baselines[S.activeBL].name} ถูกเซ็ตเรียบร้อย`,'success');
+  renderBLManageList();
 }
 
 function writeBLToTasks(){
   const blData = getActiveBLData(); if(!blData) return;
+  // Build parent WBS set so we skip summary tasks — their dates come from rollupSummaryDates, not BL snapshot
+  const parentWbsSet2 = new Set();
+  S.tasks.forEach(t=>{ const p=(t.wbs||'').split('.'); for(let i=1;i<p.length;i++) parentWbsSet2.add(p.slice(0,i).join('.')); });
   S.tasks.forEach(t=>{
-    const b = blData[t.id] || blData['wbs_'+t.wbs];
+    if(parentWbsSet2.has(t.wbs||'')) return; // skip summary/rollup tasks
+    const b = blData[t.id];
     if(b){ t.blStart=b.s; t.blFinish=b.f; }
   });
 }
@@ -1023,6 +1082,44 @@ function deleteBaseline(idx){
   writeBLToTasks();
   saveToStorage(); refreshAll(); updateBLSelector();
   toast('Baseline deleted');
+  renderBLManageList();
+}
+
+function openDeleteBLModal(){
+  if(!S.baselines.length){ toast('ไม่มี Baseline','error'); return; }
+  const rows=S.baselines.map((b,i)=>`
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line)">
+      <span style="font-family:var(--mono);font-size:11px;flex:1;color:${i===S.activeBL?'var(--accent)':'var(--txt)'}">${i===S.activeBL?'★ ':''}<b>${b.name}</b> <span style="color:var(--txt3);font-size:9px">(${b.date})</span></span>
+      <button class="btn danger" onclick="deleteBaseline(${i});closeModal();" style="padding:2px 8px;font-size:10px">ลบ</button>
+    </div>`).join('');
+  openModal('🗑 จัดการ Baseline',
+    `<div style="font-family:var(--mono);font-size:10px;color:var(--txt3);margin-bottom:12px">เลือก Baseline ที่ต้องการลบ (ไม่สามารถยกเลิกได้)</div>${rows}`,
+    `<button class="btn" onclick="closeModal()">ปิด</button>`);
+}
+
+// ─── Render BL management list in Settings panel ────────────────────────────
+function renderBLManageList(){
+  const el=document.getElementById('bl-manage-list'); if(!el) return;
+  if(!S.baselines.length){
+    el.innerHTML='<span style="color:var(--txt3);font-family:var(--mono);font-size:11px">ยังไม่มี Baseline — กด 📌 Set Baseline ใหม่</span>';
+    return;
+  }
+  el.innerHTML=S.baselines.map((b,i)=>`
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;margin-bottom:6px;
+      background:${i===S.activeBL?'rgba(20,104,179,.08)':'var(--bg4)'};
+      border:1px solid ${i===S.activeBL?'var(--accent)':'var(--line)'};
+      border-radius:5px">
+      <div style="flex:1">
+        <span style="font-weight:700;color:${i===S.activeBL?'var(--accent)':'var(--txt)'}">${i===S.activeBL?'★ ':''}${b.name}</span>
+        <span style="font-family:var(--mono);font-size:9px;color:var(--txt3);margin-left:8px">📅 ${fmtD(b.date)||b.date} &nbsp; ${Object.keys(b.data||{}).length} tasks</span>
+      </div>
+      <button class="btn" onclick="switchBaseline(${i});renderBLManageList();"
+        style="padding:3px 10px;font-size:10px;${i===S.activeBL?'background:var(--accent);color:#fff;border-color:var(--accent)':''}">
+        ${i===S.activeBL?'✓ Active':'ใช้งาน'}
+      </button>
+      <button class="btn danger" onclick="if(confirm('ลบ \'${b.name}\' ?')){deleteBaseline(${i});renderBLManageList();}"
+        style="padding:3px 8px;font-size:10px">🗑 ลบ</button>
+    </div>`).join('');
 }
 
 function updateBLSelector(){
@@ -1068,7 +1165,25 @@ function diffWD(d1, d2){
 }
 
 function pd(s){ return s?new Date(s+'T00:00:00'):null }
-function ds(d){ return d?d.toISOString().split('T')[0]:null }
+function ds(d){
+  if(!d) return null;
+  const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), day=String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+// Display date MM/DD/YYYY — internal storage stays YYYY-MM-DD
+function fmtD(s){
+  if(!s||s==='—') return s||'—';
+  const m=String(s).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return m ? `${m[2]}/${m[3]}/${m[1]}` : s;
+}
+// Parse MM/DD/YYYY or YYYY-MM-DD → YYYY-MM-DD storage
+function parseInputDate(v){
+  if(!v) return null;
+  const m1=v.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if(m1) return `${m1[3]}-${m1[1].padStart(2,'0')}-${m1[2].padStart(2,'0')}`;
+  if(/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+  return null;
+}
 function df(d){ return d?d.toLocaleDateString('en',{day:'2-digit',month:'short',year:'2-digit'}):'' }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1083,6 +1198,26 @@ function parsePreds(raw){
     if(m) result.push({ id:parseInt(m[1]), rel:(m[2]||'FS').toUpperCase(), lag:m[3]?parseInt(m[3]):0 });
   }
   return result;
+}
+
+// ── WBS → Auto ID: L1→X000, L2→X100, L3→X110 ───────────────────────────────
+function wbsToBaseId(wbs){
+  if(!wbs) return 1000;
+  const parts = wbs.split('.').map(n=>parseInt(n)||0);
+  const p1=parts[0]||1, p2=parts[1]||0, p3=parts[2]||0;
+  if(parts.length===1) return p1*1000;
+  if(parts.length===2) return p1*1000 + p2*100;
+  return p1*1000 + p2*100 + p3*10;
+}
+// Get next available ID for a given WBS (uses base + offset to avoid collision)
+function nextIdForWbs(wbs){
+  const base = wbsToBaseId(wbs);
+  // Find max used ID in this block (e.g. 1100-1199 for wbs 1.1)
+  const parts = wbs.split('.').map(n=>parseInt(n)||0);
+  const blockSize = parts.length===1?1000:parts.length===2?100:10;
+  const candidates = S.tasks.filter(t=>t.id>=base&&t.id<base+blockSize).map(t=>t.id);
+  if(!candidates.length) return base;
+  return Math.max(...candidates)+10;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1145,6 +1280,14 @@ function runCPMEngine(tasks, projStart, dataDate){
           case 'SF': { const newEF=pred.ES+lag; if(newEF>t.ES+t.dur){t.ES=newEF-t.dur} break; }
         }
       }
+      // ── "Start No Earlier Than" constraint from manually-set blStart ──────────
+      // This lets users set the start date of unconstrained tasks (e.g. first task)
+      // and have CPM respect it. For tasks with predecessors, the predecessor date
+      // already wins via Math.max above — this only shifts start later if blStart demands it.
+      if(t.blStart){
+        const blOff = diffWD(projStartD, pd(t.blStart));
+        if(blOff > 0) t.ES = Math.max(t.ES, blOff);
+      }
       t.ES=Math.max(0,t.ES);
       t.EF=t.ES+t.dur;
     }
@@ -1187,7 +1330,7 @@ function runCPMEngine(tasks, projStart, dataDate){
   const results=[];
   acts.forEach(t=>{
     const blStart = addWD(projStartD, t.ES);
-    const blFinish= addWD(projStartD, t.EF);
+    const blFinish= addWD(projStartD, Math.max(t.ES, t.EF - 1));  // inclusive: last working day
     const lfDate  = addWD(projStartD, t.LF);
 
     let status='Not Started';
@@ -1305,22 +1448,118 @@ function computeSummaries(l3results, projStartD){
 // ═══════════════════════════════════════════════════════════════════════════════
 function runCPM(){
   if(!S.tasks.length){ toast('No tasks loaded','error'); return; }
-  const acts = S.tasks.map(t=>({
-    ...t,
-    preds: parsePreds(t.predecessors),
-  }));
+
+  // Pre-compute which WBS strings are structural parents (have WBS children in the task list).
+  // Summary/rollup tasks must be EXCLUDED from the CPM network — only leaf activities participate.
+  const parentWbsSet = new Set();
+  S.tasks.forEach(t=>{
+    const parts = (t.wbs||'').split('.');
+    for(let i=1;i<parts.length;i++) parentWbsSet.add(parts.slice(0,i).join('.'));
+  });
+  const isParentTask = t => parentWbsSet.has(t.wbs||'');
+
+  // Feed only leaf activities (non-parent tasks) to CPM engine
+  const acts = S.tasks
+    .filter(t => !isParentTask(t))
+    .map(t=>({...t, preds: parsePreds(t.predecessors)}));
+
   S.results = runCPMEngine(acts, S.settings.start, S.settings.dataDate);
   const rMap={};
   S.results.results.forEach(r=>rMap[r.id]=r);
+
+  // ── Step 1: Write CPM dates to LEAF activity tasks only ─────────────────────
   S.tasks.forEach(t=>{
+    if(isParentTask(t)) return; // skip summary/rollup tasks — their dates come from rollup
     if(rMap[t.id]){
       t.TF=rMap[t.id].TF; t.status=rMap[t.id].status;
+      if(S.activeBL < 0){
+        t.blStart  = rMap[t.id].blStart;
+        t.blFinish = rMap[t.id].blFinish;
+      }
     }
   });
-  // Write active BL dates to tasks for backward compat
+
+  // ── Step 2: Write BL dates to LEAF tasks first (if baseline active) ─────────
+  // Must run BEFORE rollup so summary dates are always freshly derived from leaves.
   writeBLToTasks();
+
+  // ── Step 3: Rollup — summary task dates always derived fresh from leaf dates ──
+  // Runs AFTER writeBLToTasks so it always wins over stale BL snapshot on summary tasks.
+  rollupSummaryDates();
+
+  autoAssignPhases();
   toast(`CPM calculated — ${S.results.projDur} working days`,'success');
   refreshAll();
+}
+
+// MS Project style: roll up Start/Finish/Duration on summary tasks from children
+function rollupSummaryDates(){
+  // Process in reverse WBS order (deepest first → bubble up)
+  const sorted=[...S.tasks].sort((a,b)=>{
+    const la=wbsLevel(a.wbs||''), lb=wbsLevel(b.wbs||'');
+    return lb-la; // deepest first
+  });
+
+  sorted.forEach(t=>{
+    const myWbs = t.wbs||'';
+    // Skip leaf tasks (true activities) — only process structural parent tasks
+    // NOTE: cannot use t.dur>0 here because after the first rollup, summary tasks already
+    // have a computed dur>0 and would be incorrectly skipped on subsequent runs.
+    const hasChildren_ru = S.tasks.some(c => c!==t && (c.wbs||'').startsWith(myWbs+'.'));
+    if(!hasChildren_ru) return;
+    const myLv  = wbsLevel(myWbs);
+    const children = S.tasks.filter(c=>{
+      const cw = c.wbs||'';
+      return wbsLevel(cw)===myLv+1 && cw.startsWith(myWbs+'.');
+    });
+    if(!children.length) return;
+
+    // Gather all LEAF activity descendants (exclude intermediate summaries that already have
+    // computed dur — including them causes double-span and an off-by-one in the top rollup)
+    const allDesc = S.tasks.filter(c=>{
+      const cw = c.wbs||'';
+      if(!cw.startsWith(myWbs+'.')) return false;
+      // A task is a leaf (true activity) when it has no children in the task list
+      const isLeaf = !S.tasks.some(x => x!==c && (x.wbs||'').startsWith(cw+'.'));
+      return isLeaf;
+    });
+
+    // Use summary children if no direct activity descendants
+    const srcTasks = allDesc.length ? allDesc : children.filter(c=>c.blStart&&c.blFinish);
+    if(!srcTasks.length) return;
+
+    // ── Earliest Start / Latest Finish ─────────────────────────────────────
+    // Compare YYYY-MM-DD strings directly (lexicographic = chronological) to avoid
+    // any timezone shift that occurs when converting through Date objects → ms → toISOString()
+    const blStartStrs  = srcTasks.map(c=>c.blStart).filter(Boolean);
+    const blFinishStrs = srcTasks.map(c=>c.blFinish).filter(Boolean);
+    if(blStartStrs.length)  t.blStart  = blStartStrs.sort()[0];
+    if(blFinishStrs.length) t.blFinish = [...blFinishStrs].sort().pop();
+
+    // ── Summary Duration = working days from earliest start to latest finish (inclusive) ──
+    if(t.blStart && t.blFinish){
+      const span = diffWD(pd(t.blStart), pd(t.blFinish));
+      t.dur = span + 1;  // inclusive: 1Jan→10Jan = 10 days
+    }
+
+    // ── Actual Start / Finish rollup ─────────────────────────────────────
+    const actStartStrs = srcTasks.map(c=>c.actualStart).filter(Boolean);
+    const actFinStrs   = srcTasks.filter(c=>c.pct===100).map(c=>c.actualFinish).filter(Boolean);
+    if(actStartStrs.length) t.actualStart = actStartStrs.sort()[0];
+    // Actual Finish of summary = latest only when ALL activity children are 100%
+    const allDone = srcTasks.every(c=>c.pct===100);
+    if(allDone && actFinStrs.length) t.actualFinish = [...actFinStrs].sort().pop();
+    else t.actualFinish = null;
+
+    // ── % Complete = weighted by duration ────────────────────────────────────
+    const totalW = srcTasks.reduce((s,c)=>s+(c.dur||1),0);
+    t.pct = totalW>0 ? Math.round(srcTasks.reduce((s,c)=>s+c.pct*(c.dur||1),0)/totalW) : 0;
+
+    // ── Status ───────────────────────────────────────────────────────────────
+    if(srcTasks.every(c=>c.pct===100)) t.status='Complete';
+    else if(srcTasks.some(c=>c.pct>0||c.actualStart)) t.status='In Progress';
+    else t.status='Not Started';
+  });
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1340,7 +1579,8 @@ function switchTab(name){
   if(name==='schedule') renderSchedule('all');
   if(name==='delay') renderDelay();
   if(name==='dashboard') renderDashboard();
-  if(name==='settings') renderPhaseManager();
+  if(name==='blcompare') renderBaselineCompare();
+  if(name==='settings'){ renderPhaseManager(); renderPhaseSummary(); renderBLManageList(); }
 }
 function openModal(title,body,footer){ document.getElementById('modal-title').textContent=title; document.getElementById('modal-body').innerHTML=body; document.getElementById('modal-footer').innerHTML=footer; document.getElementById('modal-overlay').classList.add('open'); }
 function closeModal(){ document.getElementById('modal-overlay').classList.remove('open'); }
@@ -1404,8 +1644,8 @@ function movePhase(i,dir){
 function saveSettings(){
   S.settings.name    = document.getElementById('s-name').value;
   S.settings.pm      = document.getElementById('s-pm').value;
-  S.settings.start   = document.getElementById('s-start').value;
-  S.settings.dataDate= document.getElementById('s-data').value;
+  S.settings.start   = parseInputDate(document.getElementById('s-start').value)||document.getElementById('s-start').value;
+  S.settings.dataDate= parseInputDate(document.getElementById('s-data').value)||document.getElementById('s-data').value;
   S.settings.wdays   = parseInt(document.getElementById('s-wdays').value);
   // phases managed live by phase manager — no need to read field
   updateTopbar();
@@ -1472,6 +1712,69 @@ function openAddTask(){
   `, `<button class="btn" onclick="closeModal()">Cancel</button><button class="btn primary" onclick="saveTask(-1)">Add Task</button>`);
 }
 
+// Auto-calculate BL Start/Finish from predecessor's BL Finish
+function autoCalcDatesFromPred(idx){
+  const t=S.tasks[idx];
+  if(!t.predecessors || t.dur<=0) return;
+  const preds=parsePreds(t.predecessors);
+  if(!preds.length) return;
+
+  let latestStart=null;
+
+  preds.forEach(p=>{
+    const pred=S.tasks.find(x=>x.id===p.id);
+    if(!pred) return;
+    const predFin = pred.blFinish || pred.actualFinish;
+    const predSt  = pred.blStart  || pred.actualStart;
+    if(!predFin && !predSt) return;
+    const lag = p.lag||0;
+    const rel = p.rel||'FS';
+    let startD = null;
+
+    if(rel==='FS'){
+      // FS: successor starts NEXT working day after pred finishes
+      // pred finish 11 Jan → successor start 12 Jan
+      if(!predFin) return;
+      startD = addWD(pd(predFin), 1 + lag);  // +1 = next day, then lag
+    } else if(rel==='SS'){
+      // SS: successor starts SAME day as pred starts (+ lag)
+      if(!predSt) return;
+      startD = lag===0 ? pd(predSt) : addWD(pd(predSt), lag);
+    } else if(rel==='FF'){
+      // FF: successor finishes same day as pred finishes
+      // → back-calc start from finish
+      if(!predFin) return;
+      const finD = lag===0 ? pd(predFin) : addWD(pd(predFin), lag);
+      // start = finish - (dur-1)
+      const stD  = addWD(finD, -(t.dur-1));
+      t.blFinish = ds(finD);
+      t.blStart  = ds(stD);
+      showCalcBadge(idx,'⟳ Start='+t.blStart+' Finish='+t.blFinish);
+      return;
+    } else if(rel==='SF'){
+      // SF: successor finishes when pred starts
+      if(!predSt) return;
+      const finD = lag===0 ? pd(predSt) : addWD(pd(predSt), lag);
+      const stD  = addWD(finD, -(t.dur-1));
+      t.blFinish = ds(finD);
+      t.blStart  = ds(stD);
+      showCalcBadge(idx,'⟳ Start='+t.blStart+' Finish='+t.blFinish);
+      return;
+    }
+
+    // Keep the LATEST start (for multiple predecessors)
+    if(startD && (!latestStart || startD > pd(latestStart))){
+      latestStart = ds(startD);
+    }
+  });
+
+  if(latestStart){
+    t.blStart  = latestStart;
+    t.blFinish = ds(addWD(pd(latestStart), Math.max(0, t.dur-1)));
+    showCalcBadge(idx,'⟳ Start='+t.blStart+'  Finish='+t.blFinish);
+  }
+}
+
 // ── Predecessor picker helper ─────────────────────────────────────────────────
 function addPredFromPicker(){
   const taskSel = document.getElementById('pred-pick-task');
@@ -1535,12 +1838,7 @@ function autoFillWbsId(){
     return parseInt(parts[0])===p1&&t.dur>0;
   }).map(t=>t.id);
   let suggestId;
-  if(existingIds.length){
-    const maxId=Math.max(...existingIds);
-    suggestId=maxId+10;
-  } else {
-    suggestId=p1*1000+10;
-  }
+  suggestId=nextIdForWbs(wbs);
   // Make sure not duplicate
   while(S.tasks.find(t=>t.id===suggestId)) suggestId+=10;
   idEl.value=suggestId;
@@ -1673,6 +1971,55 @@ function saveTask(idx){
   toast(idx===-1?`Task added at WBS ${t.wbs}`:'Task updated');
 }
 
+// Derive phase from nearest parent or sibling WBS — also use parent task name as phase
+function getPhaseFromWbs(wbs){
+  if(!wbs) return '';
+  const parts=wbs.split('.');
+  // Walk up hierarchy: try L2 parent, then L1
+  for(let i=parts.length-1;i>=1;i--){
+    const parentWbs=parts.slice(0,i).join('.');
+    const parentTask=S.tasks.find(t=>t.wbs===parentWbs);
+    if(parentTask){
+      // Use parent phase if set, else use parent NAME as phase
+      return parentTask.phase || parentTask.name || '';
+    }
+  }
+  // Fallback: find sibling with same parent
+  const parentWbs=parts.slice(0,-1).join('.');
+  const sibling=S.tasks.find(t=>{
+    const sp=(t.wbs||'').split('.');
+    return sp.slice(0,-1).join('.')===(parentWbs||'') && (t.phase||t.name);
+  });
+  return sibling?.phase || sibling?.name || '';
+}
+
+// Auto-assign phase to all tasks based on their WBS hierarchy
+function autoAssignPhases(){
+  S.tasks.forEach(t=>{
+    const lv=wbsLevel(t.wbs||'');
+    if(lv===1){
+      // L1 task IS the phase — assign its own name as phase
+      t.phase=t.name||t.phase||'';
+    } else {
+      // L2, L3: inherit from parent
+      const derived=getPhaseFromWbs(t.wbs||'');
+      if(derived) t.phase=derived;
+    }
+  });
+  // Sync to settings
+  syncPhasesFromTasks();
+}
+
+// Sync: auto-add phases found in tasks to settings list
+function syncPhasesFromTasks(){
+  const taskPhases=[...new Set(S.tasks.map(t=>t.phase).filter(Boolean))];
+  const existing=getPhases();
+  const toAdd=taskPhases.filter(p=>!existing.includes(p));
+  if(toAdd.length){
+    S.settings.phases=[...existing,...toAdd].join(',');
+  }
+}
+
 function addBlankTask(){
   // เพิ่มงานว่างต่อท้าย list เลย
   pushUndo('Add Blank Task');
@@ -1681,11 +2028,11 @@ function addBlankTask(){
   const newNum=(parseInt(lastWbs[lastWbs.length-1])||0)+1;
   const parentWbs=lastWbs.slice(0,-1).join('.');
   const newWbs=parentWbs?(parentWbs+'.'+newNum):String(newNum);
-  const maxId=S.tasks.length?Math.max(...S.tasks.map(t=>t.id||0)):1000;
-  const newId=Math.ceil((maxId+10)/10)*10;
+  const newId=nextIdForWbs(newWbs);
+  const autoPhase=getPhaseFromWbs(newWbs)||last?.phase||'';
   const newTask={
     id:newId,wbs:newWbs,name:'New Task',dur:1,
-    phase:last?.phase||'',resource:'',predecessors:'',
+    phase:autoPhase,resource:'',predecessors:'',
     actualStart:null,actualFinish:null,pct:0,
     blStart:null,blFinish:null,TF:null,status:'Not Started'
   };
@@ -1721,8 +2068,10 @@ function clearAll(){
 // ═══════════════════════════════════════════════════════════════════════════════
 function renderTasks(){
   const tbody=document.getElementById('task-tbody');
+  const leafCount    = S.tasks.filter(t => !S.tasks.some(c => (c.wbs||'').startsWith((t.wbs||'')+'.'))).length;
+  const summaryCount = S.tasks.length - leafCount;
   document.getElementById('task-count').textContent=
-    `${S.tasks.filter(t=>t.dur>0).length} activities, ${S.tasks.filter(t=>t.dur===0).length} summary`;
+    `${leafCount} activities, ${summaryCount} summary`;
 
   const phases=getPhases();
   const phaseOpts=phases.map(p=>`<option>${p}</option>`).join('');
@@ -1730,34 +2079,52 @@ function renderTasks(){
   tbody.innerHTML=S.tasks.map((t,i)=>{
     const lv=wbsLevel(t.wbs||'');
     const isCrit=t.TF===0&&t.dur>0;
+    // A task is a rollup/summary if it has any direct WBS children in the task list
+    const hasChildren = S.tasks.some(c => (c.wbs||'').startsWith((t.wbs||'')+(t.wbs?'.':'')));
+    const isSum = t.dur===0 || hasChildren;   // dur===0 (never-computed) OR structural parent
     const rowCls=(lv===1?'tr-l1 lv1-row':lv===2?'tr-l2 lv2-row':'lv3-row')+(isCrit?' tr-crit':'');
-    const indent=lv===1?'':lv===2?'&nbsp;&nbsp;▸ ':'&nbsp;&nbsp;&nbsp;&nbsp;▪ ';
-    const tfDisp=t.TF!=null&&t.dur>0
+    // ── Symbols: rollup tasks get filled-down-arrow / bracket, activities get pointer/bullet ──
+    const indent = hasChildren
+      ? (lv===1
+          ? '<span style="color:var(--accent);font-size:10px;margin-right:3px">▐</span>'
+          : '<span style="color:var(--accent2);font-size:10px;margin-right:2px">&nbsp;&nbsp;▾</span> ')
+      : (lv===1 ? '' : lv===2
+          ? '&nbsp;&nbsp;<span style="color:var(--accent2)">▸</span> '
+          : '&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:var(--txt3)">▪</span> ');
+    const tfDisp=t.TF!=null&&t.dur>0&&!hasChildren
       ?`<span class="badge ${t.TF===0?'red':t.TF<=5?'amber':'grey'}">${t.TF}d</span>`:'—';
     const statusBadge=t.status?statusBadgeHTML(t.status):'';
-    const pctBadge=t.dur>0
-      ?`<span class="${t.pct===100?'badge green':t.pct>0?'badge amber':'badge grey'}">${t.pct}%</span>`:'—';
+    const pctBadge = isSum
+      ? (t.pct>0 ? `<span class="badge ${t.pct===100?'green':t.pct>0?'amber':'grey'}" style="font-size:9px">${t.pct}%</span>` : '—')
+      : `<span class="${t.pct===100?'badge green':t.pct>0?'badge amber':'badge grey'}">${t.pct}%</span>`;
+
+    // Summary rows: dates are read-only (rollup from children) — display as MM/DD/YYYY
+    const startDisp  = fmtD(t.blStart)  || '—';
+    const finDisp    = fmtD(t.blFinish) || '—';
+    const actSDisp   = fmtD(t.actualStart)  || '—';
+    const actFDisp   = fmtD(t.actualFinish) || '—';
+    const startStyle = isSum ? 'color:var(--accent);font-weight:600' : 'color:var(--txt3)';
+    const sumDateCell= (val,style)=>`<div class="ie-cell date-cell" style="${style};cursor:${isSum?'default':'pointer'}">${val}</div>`;
 
     return `<tr class="${rowCls}" id="tr-${i}">
-      <td><div class="ie-cell num" onclick="ieEdit(${i},'id',this)" title="แก้ไข ID">${t.id}</div></td>
-      <td><div class="ie-cell num" onclick="ieEdit(${i},'wbs',this)" title="แก้ไข WBS">${t.wbs||''}</div></td>
-      <td><div class="ie-cell name-cell" onclick="ieEdit(${i},'name',this)" title="แก้ไข">${indent}<span style="font-weight:${lv<3?700:400};color:${isCrit?'var(--red)':'inherit'}">${t.name||'—'}</span></div></td>
-      <td><div class="ie-cell phase-cell" onclick="ieEditPhase(${i},this)" title="แก้ไข Phase">${t.phase||'—'}</div></td>
-      <td><div class="ie-cell num" onclick="ieEdit(${i},'dur',this)" title="แก้ไข Duration">${t.dur||0}</div></td>
-      <td><div class="ie-cell pred-cell" onclick="ieEdit(${i},'predecessors',this)" title="แก้ไข Predecessors">${t.predecessors||'—'}</div></td>
-      <td><div class="ie-cell date-cell" style="color:var(--green)" onclick="ieEditDate(${i},'actualStart',this)">${t.actualStart||'—'}</div></td>
-      <td><div class="ie-cell date-cell" style="color:var(--green)" onclick="ieEditDate(${i},'actualFinish',this)">${t.actualFinish||'—'}</div></td>
-      <td><div class="ie-cell num" onclick="ieEdit(${i},'pct',this)">${pctBadge}</div></td>
-      <td><div class="ie-cell date-cell" style="color:var(--txt3)" onclick="ieEditDate(${i},'blStart',this)">${t.blStart||'—'}</div></td>
-      <td><div class="ie-cell date-cell" style="color:var(--txt3)" onclick="ieEditDate(${i},'blFinish',this)">${t.blFinish||'—'}</div></td>
+      <td><div class="ie-cell num" onclick="ieEdit(${i},'id',this)">${t.id}</div></td>
+      <td><div class="ie-cell num" onclick="ieEdit(${i},'wbs',this)">${t.wbs||''}</div></td>
+      <td><div class="ie-cell name-cell" onclick="ieEdit(${i},'name',this)">${indent}<span style="font-weight:${lv<3?700:400};color:${isCrit?'var(--red)':'inherit'}">${t.name||'—'}</span></div></td>
+      <td><div class="ie-cell num" onclick="${isSum?'':` ieEdit(${i},'dur',this)`}" style="cursor:${isSum?'default':'pointer'}" title="${isSum?'ระยะเวลารวมของงานลูก (auto)':''}">${isSum?`<span style="color:var(--accent2);font-weight:600">${t.dur||'—'}</span>`:t.dur||0}</div></td>
+      <td><div class="ie-cell pred-cell" onclick="ieEdit(${i},'predecessors',this)">${t.predecessors||'—'}</div></td>
+      <td onclick="${isSum?'':` ieEditDate(${i},'actualStart',this)`}">${sumDateCell(actSDisp,'color:var(--green)')}</td>
+      <td onclick="${isSum?'':` ieEditDate(${i},'actualFinish',this)`}">${sumDateCell(actFDisp,'color:var(--green)')}</td>
+      <td><div class="ie-cell num" style="cursor:${isSum?'default':'pointer'}">${pctBadge}</div></td>
+      <td onclick="${isSum?'':` ieEditDate(${i},'blStart',this)`}">${sumDateCell(startDisp, isSum?'color:var(--accent);font-weight:600':'color:var(--txt3)')}</td>
+      <td onclick="${isSum?'':` ieEditDate(${i},'blFinish',this)`}">${sumDateCell(finDisp, isSum?'color:var(--accent);font-weight:600':'color:var(--txt3)')}</td>
       <td style="text-align:center">${tfDisp}</td>
       <td>${statusBadge}</td>
       <td>
         <div class="row-actions">
-          <button class="row-btn" onclick="indentTask(${i})" title="เพิ่มระดับ (→)">→</button>
-          <button class="row-btn" onclick="outdentTask(${i})" title="ลดระดับ (←)">←</button>
-          <button class="row-btn primary" onclick="addTaskAfter(${i})" title="เพิ่มงานต่อท้าย">+</button>
-          <button class="row-btn danger" onclick="deleteTask(${i})" title="ลบงาน">✕</button>
+          <button class="row-btn" onclick="indentTask(${i})" title="→">→</button>
+          <button class="row-btn" onclick="outdentTask(${i})" title="←">←</button>
+          <button class="row-btn primary" onclick="addTaskAfter(${i})" title="+">+</button>
+          <button class="row-btn danger" onclick="deleteTask(${i})" title="✕">✕</button>
         </div>
       </td>
     </tr>`;
@@ -1797,17 +2164,24 @@ function ieEdit(idx, field, cell){
     pushUndo('Edit '+field);
     t[field]=newVal;
 
-    // Smart: if dur changed → recalc dates
-    if(field==='dur'){
-      if(t.actualStart && !t.actualFinish){
-        // Start+dur → finish
-        const nf=addWD(pd(t.actualStart), t.dur);
-        if(nf){ t.actualFinish=ds(nf); showCalcBadge(idx,'⟳ finish='+t.actualFinish); }
-      } else if(!t.actualStart && t.blStart && !t.blFinish){
-        // BLStart+dur → BLFinish
-        const nf=addWD(pd(t.blStart), t.dur);
-        if(nf){ t.blFinish=ds(nf); showCalcBadge(idx,'⟳ BLfin='+t.blFinish); }
+    // Smart: dur → finish = start + (dur-1) working days [INCLUSIVE: 1Jan+2d = 2Jan]
+    if(field==='name'){
+      // If L1 task renamed → re-derive phases for all children
+      const lv=wbsLevel(t.wbs||'');
+      if(lv<=2) autoAssignPhases();
+    }
+    if(field==='dur' && t.dur>0){
+      if(t.actualStart){
+        const nf=addWD(pd(t.actualStart), Math.max(0,t.dur-1));
+        if(nf){ t.actualFinish=ds(nf); showCalcBadge(idx,'⟳ ActFinish='+t.actualFinish); }
+      } else if(t.blStart){
+        const nf=addWD(pd(t.blStart), Math.max(0,t.dur-1));
+        if(nf){ t.blFinish=ds(nf); showCalcBadge(idx,'⟳ BLFinish='+t.blFinish); }
       }
+    }
+    // Smart: predecessors → always recalc BL dates from pred (even if blStart exists)
+    if(field==='predecessors' && t.predecessors && t.dur>0){
+      autoCalcDatesFromPred(idx);
     }
     saveToStorage();
     if(S.tasks.length) runCPM(); else renderTasks();
@@ -1820,48 +2194,80 @@ function ieEdit(idx, field, cell){
   });
 }
 
-// Phase dropdown inline edit
+// Phase inline edit — dropdown + allow type new phase
 function ieEditPhase(idx, cell){
   if(cell.classList.contains('editing')) return;
   cell.classList.add('editing');
   const t=S.tasks[idx];
   const phases=getPhases();
+
+  // Container with select + text input for new phase
+  const wrap=document.createElement('div');
+  wrap.style.cssText='display:flex;gap:2px;width:100%;min-width:140px;';
+
   const sel=document.createElement('select');
-  sel.innerHTML='<option value="">—</option>'+phases.map(p=>`<option${p===t.phase?' selected':''}>${p}</option>`).join('');
-  sel.style.cssText='width:100%;';
-  cell.innerHTML=''; cell.appendChild(sel);
+  sel.style.cssText='flex:1;font-size:10px;';
+  sel.innerHTML='<option value="">—</option>'
+    +phases.map(p=>`<option value="${p}"${p===t.phase?' selected':''}>${p}</option>`).join('')
+    +'<option value="__new__">+ เพิ่ม Phase ใหม่...</option>';
+
+  wrap.appendChild(sel);
+  cell.innerHTML=''; cell.appendChild(wrap);
   sel.focus();
 
-  const commit=()=>{
+  const commit=(newPhase)=>{
     cell.classList.remove('editing');
-    if(sel.value!==t.phase){
+    if(newPhase!==undefined && newPhase!==t.phase){
       pushUndo('Edit phase');
-      t.phase=sel.value;
-      saveToStorage();
+      t.phase=newPhase;
+      // Auto-add to settings phases list if not exists
+      if(newPhase && !phases.includes(newPhase)){
+        const updated=[...phases, newPhase];
+        S.settings.phases=updated.join(',');
+        saveToStorage();
+        toast('เพิ่ม Phase: '+newPhase,'success');
+      } else saveToStorage();
     }
     renderTasks();
   };
-  sel.addEventListener('change', commit);
-  sel.addEventListener('blur', commit);
+
+  sel.addEventListener('change', ()=>{
+    if(sel.value==='__new__'){
+      // Replace with text input
+      const inp2=document.createElement('input');
+      inp2.type='text'; inp2.placeholder='พิมพ์ชื่อ Phase ใหม่...';
+      inp2.style.cssText='flex:1;font-size:11px;';
+      wrap.innerHTML=''; wrap.appendChild(inp2);
+      inp2.focus();
+      inp2.addEventListener('blur',()=>commit(inp2.value.trim()||t.phase));
+      inp2.addEventListener('keydown',e=>{
+        if(e.key==='Enter'){e.preventDefault();commit(inp2.value.trim()||t.phase);}
+        if(e.key==='Escape'){cell.classList.remove('editing');renderTasks();}
+      });
+    } else {
+      commit(sel.value);
+    }
+  });
+  sel.addEventListener('blur', ()=>{ setTimeout(()=>{ if(cell.contains(sel)) commit(sel.value==='__new__'?t.phase:sel.value); },150); });
   sel.addEventListener('keydown', e=>{ if(e.key==='Escape'){cell.classList.remove('editing');renderTasks();} });
 }
 
-// Date inline edit with smart calculation
+// Date inline edit with smart calculation — input/display as MM/DD/YYYY
 function ieEditDate(idx, field, cell){
   if(cell.classList.contains('editing')) return;
   cell.classList.add('editing');
   const t=S.tasks[idx];
-  const safeD=v=>{if(!v)return '';const m=String(v).match(/^(\d{4})-(\d{2})-(\d{2})$/);return m?v:'';};
-  const old=safeD(t[field]);
+  const old=t[field]||null; // stored as YYYY-MM-DD
   const inp=document.createElement('input');
-  inp.type='date'; inp.value=old;
-  inp.style.cssText='width:100%;min-width:106px;';
+  inp.type='text'; inp.placeholder='MM/DD/YYYY';
+  inp.value=fmtD(old)||''; // show as MM/DD/YYYY
+  inp.style.cssText='width:100%;min-width:106px;font-family:var(--mono);font-size:11px;';
   cell.innerHTML=''; cell.appendChild(inp);
-  inp.focus();
+  inp.focus(); inp.select();
 
   const commit=()=>{
     cell.classList.remove('editing');
-    const newVal=inp.value||null;
+    const newVal=parseInputDate(inp.value.trim())||null; // parse back to YYYY-MM-DD
     if(newVal===old||(!newVal&&!old)){ renderTasks(); return; }
     pushUndo('Edit '+field);
     t[field]=newVal;  // assign first
@@ -1872,29 +2278,33 @@ function ieEditDate(idx, field, cell){
 
     if(field==='actualStart'||field==='actualFinish'){
       if(aS && aF){
-        // Both actual dates → recalc duration
-        const newDur=diffWD(pd(aS), pd(aF));
+        // Both actual dates → dur = diffWD + 1 [inclusive]
+        const newDur=diffWD(pd(aS), pd(aF))+1;
         if(newDur>0){ t.dur=newDur; showCalcBadge(idx,'⟳ dur='+newDur+'d'); }
       } else if(field==='actualStart' && aS && t.dur>0){
-        // Start + dur → calc Actual Finish
-        const newFin=addWD(pd(aS), t.dur);
-        if(newFin){ t.actualFinish=ds(newFin); showCalcBadge(idx,'⟳ finish='+t.actualFinish); }
-      } else if(field==='actualFinish' && aF && aS && !t.dur){
-        // Finish + start → calc dur
-        const d=diffWD(pd(aS), pd(aF));
+        // Start + dur → finish = start + (dur-1) working days [inclusive]
+        const newFin=addWD(pd(aS), t.dur-1);
+        if(newFin){ t.actualFinish=ds(newFin); showCalcBadge(idx,'⟳ ActFinish='+t.actualFinish); }
+      } else if(field==='actualFinish' && aF && aS){
+        // Finish + Start → dur = diffWD + 1 [inclusive]
+        const d=diffWD(pd(aS), pd(aF))+1;
         if(d>0){ t.dur=d; showCalcBadge(idx,'⟳ dur='+d+'d'); }
       }
       if(t.actualStart && t.actualFinish && t.pct<100) t.pct=100;
     }
     if(field==='blStart'||field==='blFinish'){
-      if(bS && bF){
-        // Both BL dates → recalc duration if not set
-        if(!t.dur){ const d=diffWD(pd(bS),pd(bF)); if(d>0){t.dur=d;showCalcBadge(idx,'⟳ dur='+d+'d');} }
-      } else if(field==='blStart' && bS && t.dur>0 && !bF){
-        const newBF=addWD(pd(bS), t.dur);
-        if(newBF){ t.blFinish=ds(newBF); showCalcBadge(idx,'⟳ BLfin='+t.blFinish); }
-      } else if(field==='blFinish' && bF && bS && !t.dur){
-        const d=diffWD(pd(bS),pd(bF)); if(d>0){t.dur=d;showCalcBadge(idx,'⟳ dur='+d+'d');}
+      if(bS && bF && bS!==bF){
+        // Both BL dates → dur = diffWD + 1 [inclusive]
+        const d=diffWD(pd(bS),pd(bF))+1;
+        if(d>0){ t.dur=d; showCalcBadge(idx,'⟳ dur='+d+'d'); }
+      } else if(field==='blStart' && bS && t.dur>0){
+        // BL Start + dur → finish = start + (dur-1) [inclusive]
+        const newBF=addWD(pd(bS), t.dur-1);
+        if(newBF){ t.blFinish=ds(newBF); showCalcBadge(idx,'⟳ BLFinish='+t.blFinish); }
+      } else if(field==='blFinish' && bF && bS){
+        // BL Finish + BL Start → calc dur
+        const d=diffWD(pd(bS),pd(bF));
+        if(d>0){ t.dur=d; showCalcBadge(idx,'⟳ dur='+d+'d'); }
       }
     }
     saveToStorage();
@@ -1967,6 +2377,7 @@ function indentTask(idx){
   else if(!t.phase) t.phase=prev.phase||t.phase;
 
   saveToStorage();
+  autoAssignPhases();
   if(S.tasks.length) runCPM(); else renderTasks();
   toast(`→ Indent WBS ${t.wbs} | Phase: ${t.phase||'—'}`);
 }
@@ -1993,6 +2404,7 @@ function outdentTask(idx){
   if(sameLevel.length>0 && !t.phase) t.phase=sameLevel[sameLevel.length-1].phase||t.phase;
 
   saveToStorage();
+  autoAssignPhases();
   if(S.tasks.length) runCPM(); else renderTasks();
   toast(`← Outdent WBS ${t.wbs}`);
 }
@@ -2019,13 +2431,13 @@ function addTaskAfter(idx){
     }
   });
 
-  // Generate new ID
-  const maxId=S.tasks.length?Math.max(...S.tasks.map(t=>t.id||0)):1000;
-  const newId=Math.ceil((maxId+10)/10)*10;
+  // Generate new ID based on WBS structure
+  const newId=nextIdForWbs(newWbs);
 
+  const autoPhase2=getPhaseFromWbs(newWbs)||ref.phase||'';
   const newTask={
     id:newId, wbs:newWbs, name:'New Task',
-    dur:1, phase:ref.phase||'', resource:'', predecessors:'',
+    dur:1, phase:autoPhase2, resource:'', predecessors:'',
     actualStart:null, actualFinish:null, pct:0,
     blStart:null, blFinish:null, TF:null, status:'Not Started'
   };
@@ -2050,9 +2462,9 @@ function calcPlannedPctAt(blStart, blFinish, viewDate, projStartD){
   const vd=viewDate||projStartD;
   if(vd<=bs) return 0;
   if(vd>=bf) return 100;
-  const totalDur = diffWD(bs, bf);
+  const totalDur = diffWD(bs, bf)+1;  // inclusive
   if(totalDur<=0) return 100;
-  const elapsed  = diffWD(bs, vd);
+  const elapsed  = diffWD(bs, vd)+1;  // inclusive
   return Math.round(Math.min(100, elapsed/totalDur*100));
 }
 
@@ -2423,6 +2835,82 @@ function showKpiDrilldown(type){
   document.getElementById('kpi-drilldown').scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 // ═══════════════════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════════════
+// PHASE SUMMARY (Settings)
+// ═══════════════════════════════════════════════════════════════════════════════
+function renderPhaseSummary(){
+  const el=document.getElementById('phase-summary-list');
+  if(!el) return;
+  if(!S.tasks.length){ el.innerHTML='<span style="color:var(--txt3)">ยังไม่มี Tasks</span>'; return; }
+  const l1Tasks=S.tasks.filter(t=>wbsLevel(t.wbs||'')===1);
+  if(!l1Tasks.length){ el.innerHTML='<span style="color:var(--txt3)">ยังไม่มี Phase (WBS Level 1)</span>'; return; }
+  let html='';
+  l1Tasks.forEach(l1=>{
+    const acts=S.tasks.filter(t=>{
+      const p=(t.wbs||'').split('.');
+      return p[0]===l1.wbs&&p.length>=2&&S.tasks.find(x=>x.wbs===t.wbs)?.dur>0;
+    }).length;
+    html+=`<div style="margin-bottom:8px;border-left:3px solid var(--accent);padding-left:10px">
+      <div style="font-weight:700;color:var(--accent);margin-bottom:2px">${l1.wbs} — ${l1.name||'Unnamed'} <span style="color:var(--txt3);font-weight:400">(${acts} activities)</span></div>`;
+    S.tasks.filter(t=>{ const p=(t.wbs||'').split('.'); return p[0]===l1.wbs&&p.length===2; }).forEach(l2=>{
+      const l2acts=S.tasks.filter(t=>{ const p=(t.wbs||'').split('.'); return p[0]===l1.wbs&&p[1]===(l2.wbs.split('.')[1])&&p.length===3; }).length;
+      html+=`<div style="padding-left:12px;color:var(--txt2);font-size:10px">▸ <b>${l2.wbs}</b> ${l2.name||''} <span style="color:var(--txt3)">(${l2acts} tasks)</span></div>`;
+    });
+    html+=`</div>`;
+  });
+  el.innerHTML=html;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// BASELINE COMPARE TABLE
+// ═══════════════════════════════════════════════════════════════════════════════
+function renderBaselineCompare(){
+  if(!S.results){ toast('Run CPM first','error'); return; }
+  const {results}=S.results;
+  const bls=S.baselines;
+  const blCols=bls.map(bl=>`<th colspan="2" style="background:rgba(100,116,139,.12);text-align:center;border-left:2px solid var(--line2)"><span style="font-family:var(--mono);font-size:9px">📌 ${bl.name}</span><br><span style="font-family:var(--mono);font-size:8px;color:var(--txt3)">${bl.date||''}</span></th>`).join('');
+  const blSubCols=bls.map(()=>'<th style="font-size:9px;color:var(--txt3)">Start</th><th style="font-size:9px;color:var(--txt3)">Finish</th>').join('');
+  document.getElementById('blcompare-head').innerHTML=`
+    <tr>
+      <th style="width:40px">ID</th><th style="width:56px">WBS</th><th>Name</th><th style="width:44px">Dur</th>
+      <th colspan="2" style="background:rgba(20,104,179,.1);text-align:center"><span style="font-family:var(--mono);font-size:9px;color:var(--accent)">📅 Current Plan</span></th>
+      ${blCols}
+    </tr>
+    <tr>
+      <th colspan="4"></th>
+      <th style="font-size:9px;color:var(--accent)">Start</th><th style="font-size:9px;color:var(--accent)">Finish</th>
+      ${blSubCols}
+    </tr>`;
+  const rows=S.tasks.map(t=>{
+    const r=results.find(x=>x.id===t.id);
+    const lv=wbsLevel(t.wbs||'');
+    const cls=lv===1?'tr-l1':lv===2?'tr-l2':'';
+    const ind=lv===1?'':lv===2?'&nbsp;&nbsp;▸ ':'&nbsp;&nbsp;&nbsp;&nbsp;▪ ';
+    const cS=r?.blStart||t.blStart||'—';
+    const cF=r?.blFinish||t.blFinish||'—';
+    const blCells=bls.map(bl=>{
+      const snap=bl.data[t.id]||bl.data['wbs_'+t.wbs];
+      const bs=snap?.s||'—', bf=snap?.f||'—';
+      const sv=bs!=='—'&&cS!=='—'?diffWD(pd(bs),pd(cS)):null;
+      const fv=bf!=='—'&&cF!=='—'?diffWD(pd(bf),pd(cF)):null;
+      const svHtml=sv!==null?`<span style="font-size:8px;margin-left:2px;color:${sv>0?'var(--red)':sv<0?'var(--green)':'var(--txt3)'}">${sv>0?'+':''}${sv}d</span>`:'';
+      const fvHtml=fv!==null?`<span style="font-size:8px;margin-left:2px;color:${fv>0?'var(--red)':fv<0?'var(--green)':'var(--txt3)'}">${fv>0?'+':''}${fv}d</span>`:'';
+      return `<td style="font-family:var(--mono);font-size:10px;border-left:1px solid var(--line)">${bs}${svHtml}</td><td style="font-family:var(--mono);font-size:10px">${bf}${fvHtml}</td>`;
+    }).join('');
+    return `<tr class="${cls}">
+      <td><span class="badge blue" style="font-size:9px">${t.id}</span></td>
+      <td><span style="font-family:var(--mono);font-size:9px">${t.wbs||''}</span></td>
+      <td>${ind}<span style="font-weight:${lv<3?700:400}">${t.name||''}</span></td>
+      <td style="text-align:center;font-family:var(--mono);font-size:10px">${t.dur||0}</td>
+      <td style="font-family:var(--mono);font-size:10px;color:var(--accent)">${fmtD(cS)}</td>
+      <td style="font-family:var(--mono);font-size:10px;color:var(--accent)">${fmtD(cF)}</td>
+      ${blCells}
+    </tr>`;
+  }).join('');
+  document.getElementById('blcompare-tbody').innerHTML=bls.length?rows:
+    `<tr><td colspan="10" style="text-align:center;padding:24px;color:var(--txt3);font-family:var(--mono)">ยังไม่มี Baseline — กด 📌 Baseline เพื่อบันทึก</td></tr>`;
+}
+
 function renderSchedule(filter){
   if(!S.results){ document.getElementById('sched-tbody').innerHTML='<tr><td colspan="20" style="text-align:center;padding:24px;color:var(--txt3)">Run CPM first</td></tr>'; return; }
   const {results, summaries} = S.results;
@@ -2445,10 +2933,10 @@ function renderSchedule(filter){
     const blS=r?r.blStart:(s?s.bl_start:'—');
     const blF=r?r.blFinish:(s?s.bl_finish:'—');
     // Convert ES/EF/LS/LF offsets to dates
-    const esDate=r?ds(addWD(projStartD,r.ES)):'—';
-    const efDate=r?ds(addWD(projStartD,r.EF)):'—';
-    const lsDate=r?ds(addWD(projStartD,r.LS)):'—';
-    const lfDate=r?ds(addWD(projStartD,r.LF)):'—';
+    const esDate=r?fmtD(ds(addWD(projStartD,r.ES))):'—';
+    const efDate=r?fmtD(ds(addWD(projStartD,r.EF))):'—';
+    const lsDate=r?fmtD(ds(addWD(projStartD,r.LS))):'—';
+    const lfDate=r?fmtD(ds(addWD(projStartD,r.LF))):'—';
     const pctDisp=t.dur>0?(r?r.pct:s?s.pct:0):s?s.pct:0;
     const sv=r&&r.startVar!==0?`<span style="color:${r.startVar>0?'var(--red)':'var(--green)'}">${r.startVar>0?'+':''}${r.startVar}</span>`:'0';
     const fv=r&&r.finishVar!==0?`<span style="color:${r.finishVar>0?'var(--red)':'var(--green)'}">${r.finishVar>0?'+':''}${r.finishVar}</span>`:'0';
@@ -2464,11 +2952,11 @@ function renderSchedule(filter){
       <td style="text-align:center;color:var(--accent);font-size:10px">${efDate}</td>
       <td style="text-align:center;color:var(--txt3);font-size:10px">${lsDate}</td>
       <td style="text-align:center;color:var(--txt3);font-size:10px">${lfDate}</td>
-      <td style="font-size:10px">${blS||'—'}</td>
-      <td style="font-size:10px">${blF||'—'}</td>
+      <td style="font-size:10px">${fmtD(blS)||'—'}</td>
+      <td style="font-size:10px">${fmtD(blF)||'—'}</td>
       <td>${tf}</td><td style="text-align:center">${ff}</td>
-      <td style="font-size:10px;color:var(--green)">${t.actualStart||'—'}</td>
-      <td style="font-size:10px;color:var(--green)">${t.actualFinish||'—'}</td>
+      <td style="font-size:10px;color:var(--green)">${fmtD(t.actualStart)||'—'}</td>
+      <td style="font-size:10px;color:var(--green)">${fmtD(t.actualFinish)||'—'}</td>
       <td style="text-align:center">${sv}</td><td style="text-align:center">${fv}</td>
       <td style="text-align:center"><span class="badge ${pctDisp===100?'green':pctDisp>0?'amber':'grey'}">${pctDisp}%</span></td>
       <td style="text-align:center">${isCrit?'<span class="badge crit">★ CP</span>':'—'}</td>
@@ -2640,17 +3128,20 @@ function renderGantt(){
     const lv=wbsLevel(t.wbs||'');
     const r=rMap[t.id];
     const s=summaries[t.wbs];
-    const isSum=t.dur===0;
+    const isSum = S.tasks.some(c => c!==t && (c.wbs||'').startsWith((t.wbs||'')+'.')); // structural parent
     if(!S.gantt.showSummary&&isSum) return;
-    if(filter==='critical'&&(!r||!r.critical)) return;
-    if(filter==='delayed'&&(!r||r.schedDelay<=0)) return;
-    if(filter==='inprog'&&(!r||r.status!=='In Progress')) return;
+    if(filter==='critical'&&(!r||!r.critical)&&!isSum) return;
+    if(filter==='delayed'&&(!r||r.schedDelay<=0)&&!isSum) return;
+    if(filter==='inprog'&&(!r||r.status!=='In Progress')&&!isSum) return;
 
     const isAlt=!isSum&&(altIdx++%2===1);
     const isCrit=r&&r.critical;
     const rowBg=lv===1?'#E8F1FA':lv===2?'#F0F6FC':isAlt?'#F8FAFB':'#FFFFFF';
     const nameFg=lv===1?'var(--txt)':lv===2?'var(--txt)':isCrit?'var(--red)':'var(--txt2)';
-    const indent=lv===1?'▌ ':lv===2?'  ▸ ':'      ';
+    // Summary/rollup tasks: ▐ (L1) or ▾ (L2) — Activity tasks: ▸ (L2) or ▪ (L3)
+    const indent = isSum
+      ? (lv===1 ? '▐ ' : lv===2 ? '  ▾ ' : '    ▾ ')
+      : (lv===1 ? '' : lv===2 ? '  ▸ ' : '      ');
     const pct=r?r.pct:(s?s.pct:0);
     const ROW_H = 36;
     const taskIdx = S.tasks.indexOf(t);
@@ -2730,18 +3221,28 @@ function renderGantt(){
 
       if(isSum){
         // ═══ SUMMARY BAR ═══
+        // Use current schedule span (from summaries) for position; BL only adds extra span
         const sES = showBL ? Math.min(blES, curES) : curES;
         const sEF = showBL ? Math.max(blEF, curEF) : curEF;
-        const sumX = Math.max(0, ox(sES));
-        const sumW = Math.max(0, ox(Math.min(sEF, viewOff0+MAX)) - sumX);
-        const sumY = Math.floor(ROW_H / 2);
-        const d = 6;
-        bars+=`<div style="position:absolute;left:${sumX}px;width:${sumW}px;height:2px;top:${sumY}px;background:#000;z-index:5"></div>`;
-        bars+=`<div style="position:absolute;left:${sumX-d}px;top:${sumY-d}px;width:0;height:0;border-left:${d}px solid transparent;border-right:${d}px solid transparent;border-top:${d*1.5}px solid #000;z-index:6;pointer-events:none"></div>`;
-        bars+=`<div style="position:absolute;left:${sumX+sumW-d}px;top:${sumY-d}px;width:0;height:0;border-left:${d}px solid transparent;border-right:${d}px solid transparent;border-top:${d*1.5}px solid #000;z-index:6;pointer-events:none"></div>`;
-        if(pct>0){
-          const fillW=Math.round(sumW*pct/100);
-          bars+=`<div style="position:absolute;left:${sumX}px;width:${fillW}px;height:4px;top:${sumY-1}px;background:${pct===100?'#16A34A':'#2563EB'};z-index:5"></div>`;
+        if(sEF <= sES) { /* skip zero-width */ } else {
+          const sumX = Math.max(0, ox(sES));
+          const sumW = Math.max(0, ox(Math.min(sEF, viewOff0+MAX)) - sumX);
+          const sumY = Math.floor(ROW_H / 2);
+          // L1: black 3px line + big diamonds; L2: red 2px line + smaller diamonds
+          const isL1  = lv === 1;
+          const lineH = isL1 ? 3 : 2;
+          const lineC = isL1 ? '#1a1a1a' : '#CC2200';
+          const diam  = isL1 ? 7 : 5;
+          bars+=`<div style="position:absolute;left:${sumX}px;width:${sumW}px;height:${lineH}px;top:${sumY - Math.floor(lineH/2)}px;background:${lineC};z-index:5"></div>`;
+          // Left diamond (▼)
+          bars+=`<div style="position:absolute;left:${sumX-diam}px;top:${sumY-diam}px;width:0;height:0;border-left:${diam}px solid transparent;border-right:${diam}px solid transparent;border-top:${diam*1.4}px solid ${lineC};z-index:6;pointer-events:none"></div>`;
+          // Right diamond (▼)
+          bars+=`<div style="position:absolute;left:${sumX+sumW-diam}px;top:${sumY-diam}px;width:0;height:0;border-left:${diam}px solid transparent;border-right:${diam}px solid transparent;border-top:${diam*1.4}px solid ${lineC};z-index:6;pointer-events:none"></div>`;
+          // Progress fill
+          if(pct>0){
+            const fillW=Math.round(sumW*pct/100);
+            bars+=`<div style="position:absolute;left:${sumX}px;width:${fillW}px;height:${lineH+1}px;top:${sumY - Math.floor(lineH/2)}px;background:${pct===100?'#16A34A':'#2563EB'};z-index:5;opacity:.7"></div>`;
+          }
         }
       } else {
         // ═══ ACTIVITY BARS ═══
@@ -2857,11 +3358,17 @@ function renderGantt(){
               bars+=`<div style="position:absolute;left:${cx-1}px;width:${cw+2}px;height:${barH+4}px;top:${startY-2}px;border:1.5px solid rgba(0,0,0,.5);z-index:5;pointer-events:none"></div>`;
             }
           }
-          // Float
+          // Float dashed line → Late Finish (LF)
           if(!isCrit && lf > curEF){
             const fx = ox(curEF);
             const fw = Math.max(0, ox(Math.min(lf, viewOff0+MAX)) - fx);
-            if(fw>0) bars+=`<div style="position:absolute;left:${fx}px;width:${fw}px;height:0;top:${startY+barH/2}px;border-top:1.5px dashed rgba(0,0,0,.2);z-index:2;pointer-events:none"></div>`;
+            if(fw>0){
+              bars+=`<div style="position:absolute;left:${fx}px;width:${fw}px;height:0;top:${startY+barH/2}px;border-top:2px dashed rgba(20,104,179,.45);z-index:2;pointer-events:none"></div>`;
+              // LF marker
+              const lfX=ox(Math.min(lf,viewOff0+MAX));
+              bars+=`<div style="position:absolute;left:${lfX-1}px;width:2px;height:${barH}px;top:${startY}px;background:rgba(20,104,179,.5);z-index:3;pointer-events:none"></div>`;
+              if(fw>16) bars+=`<span style="position:absolute;left:${fx+2}px;top:${startY}px;font-family:var(--mono);font-size:6px;color:rgba(20,104,179,.8);pointer-events:none;z-index:4;line-height:${barH}px">TF:${lf-curEF}d</span>`;
+            }
           }
         }
       }
@@ -2955,8 +3462,8 @@ function syncScaleUI(){
   if(cw){ cw.value=S.gantt.colWidth||16; document.getElementById('g-cw-label').textContent=(S.gantt.colWidth||16)+'px'; }
   const vs=document.getElementById('g-view-start');
   const ve=document.getElementById('g-view-end');
-  if(vs) vs.value=S.gantt.viewStart||'';
-  if(ve) ve.value=S.gantt.viewEnd||'';
+  if(vs) vs.value=fmtD(S.gantt.viewStart)||'';
+  if(ve) ve.value=fmtD(S.gantt.viewEnd)||'';
 }
 function gFilter(f){
   S.gantt.filter=f;
@@ -2969,8 +3476,8 @@ function gFilter(f){
 function toggleSummaryRows(){S.gantt.showSummary=!S.gantt.showSummary;renderGantt();}
 
 function setViewRange(){
-  S.gantt.viewStart = document.getElementById('g-view-start').value || '';
-  S.gantt.viewEnd   = document.getElementById('g-view-end').value   || '';
+  S.gantt.viewStart = parseInputDate(document.getElementById('g-view-start').value) || '';
+  S.gantt.viewEnd   = parseInputDate(document.getElementById('g-view-end').value)   || '';
   renderGantt();
 }
 function resetViewRange(){
@@ -2978,6 +3485,29 @@ function resetViewRange(){
   document.getElementById('g-view-start').value='';
   document.getElementById('g-view-end').value='';
   renderGantt();
+}
+
+// ── Fit Gantt: auto-calculate colWidth so all tasks fit in visible area ─────
+function fitGantt(){
+  if(!S.results) return;
+  const {projDur, projStartD} = S.results;
+  const vStartDate = S.gantt.viewStart ? pd(S.gantt.viewStart) : projStartD;
+  const vEndDate   = S.gantt.viewEnd   ? pd(S.gantt.viewEnd)   : null;
+  const autoEnd    = Math.min(projDur + 20, 400);
+  const viewOff1   = vEndDate ? diffWD(projStartD, vEndDate) : autoEnd;
+  const viewOff0   = diffWD(projStartD, vStartDate);
+  const totalDays  = Math.max(1, viewOff1 - viewOff0);
+  // Chart area width = gantt-right clientWidth
+  const gr = document.getElementById('gantt-right');
+  if(!gr) return;
+  const availW = gr.clientWidth - 2; // 2px for borders
+  const fitCW  = Math.max(4, Math.min(60, Math.floor(availW / totalDays)));
+  S.gantt.colWidth = fitCW;
+  const slider = document.getElementById('g-col-width');
+  if(slider) slider.value = fitCW;
+  document.getElementById('g-cw-label').textContent = fitCW + 'px';
+  renderGantt();
+  toast(`⊡ Fit: ${fitCW}px/day (${totalDays} days)`, 'success');
 }
 
 function showGTip(e,enc){
@@ -3240,6 +3770,7 @@ function importProjectJSON(e){
     const p=JSON.parse(ev.target.result);
     S.settings={...S.settings,...p.settings}; S.tasks=p.tasks||[];
     S.baselines=p.baselines||[]; S.activeBL=p.activeBL??-1;
+    syncPhasesFromTasks();  // auto-add task phases to settings list
     updateSettingsForm(); updateTopbar(); renderTasks();
     toast(`Loaded: ${S.settings.name}`,'success');
     e.target.value='';
@@ -3249,8 +3780,8 @@ function importProjectJSON(e){
 function updateSettingsForm(){
   document.getElementById('s-name').value=S.settings.name;
   document.getElementById('s-pm').value=S.settings.pm;
-  document.getElementById('s-start').value=S.settings.start;
-  document.getElementById('s-data').value=S.settings.dataDate;
+  document.getElementById('s-start').value=fmtD(S.settings.start)||S.settings.start||'';
+  document.getElementById('s-data').value=fmtD(S.settings.dataDate)||S.settings.dataDate||'';
   const wsel=document.getElementById('s-wdays');
   if(wsel) wsel.value=String(S.settings.wdays||5);
   renderPhaseManager();
@@ -3438,6 +3969,7 @@ function fbApplyData(data, label){
   S.tasks     = decoded.tasks||[];
   S.baselines = decoded.baselines||[];
   S.activeBL  = decoded.activeBL??-1;
+  syncPhasesFromTasks();  // auto-sync phases from task data
 }
 
 // START real-time listener (auto-sync)
