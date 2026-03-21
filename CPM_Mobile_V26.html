@@ -239,7 +239,11 @@ svg.ring{transform:rotate(-90deg)}
     <div class="section-hd">Firebase Cloud Sync</div>
     <div class="card">
       <div id="m-cloud-status" style="font-family:var(--mono);font-size:11px;color:var(--txt3);margin-bottom:12px">ยังไม่ได้เชื่อมต่อ</div>
-      <button class="btn-primary" onclick="openCloudSheet()">☁ ตั้งค่า Firebase</button>
+      <button class="btn-primary" onclick="openCloudSheet()">☁ ตั้งค่า / เชื่อมต่อ Firebase</button>
+      <div id="m-sync-btns" style="display:none;margin-top:10px;display:none">
+        <button class="btn-primary" onclick="manualPull()" style="background:var(--accent2)">⬇ Pull — ดึงข้อมูลจาก Desktop</button>
+        <button class="btn-secondary" onclick="fbPush()" style="margin-top:6px">⬆ Push — ส่งข้อมูลไป Desktop</button>
+      </div>
     </div>
     <div class="section-hd">Project Info</div>
     <div class="card" id="m-proj-info" style="font-family:var(--mono);font-size:11px;color:var(--txt2);line-height:2">—</div>
@@ -282,6 +286,10 @@ svg.ring{transform:rotate(-90deg)}
     <div class="field-row"><label>Project ID</label><input id="fb-projId" type="text" placeholder="my-project"></div>
     <div class="field-row"><label>Sync ID (ชื่อห้อง)</label><input id="fb-syncId" type="text" placeholder="egat-bb2-substation"></div>
     <button class="btn-primary" onclick="fbConnectMobile()">🔌 Connect & Pull</button>
+    <div id="sheet-sync-row" style="display:none;gap:8px;margin-top:2px">
+      <button class="btn-secondary" onclick="manualPull();closeCloudSheet()" style="flex:1;background:rgba(8,145,178,.1);color:var(--accent2);border-color:var(--accent2)">⬇ Pull ข้อมูล</button>
+      <button class="btn-secondary" onclick="fbPush();closeCloudSheet()" style="flex:1">⬆ Push ข้อมูล</button>
+    </div>
     <button class="btn-secondary" onclick="closeCloudSheet()">ปิด</button>
     <div id="cloud-sheet-status" style="font-family:var(--mono);font-size:10px;color:var(--txt3);text-align:center;padding-top:8px"></div>
   </div>
@@ -703,16 +711,35 @@ async function fbConnectMobile(){
   if(data){ applyData(data); document.getElementById('cloud-sheet-status').textContent=`✓ Pull สำเร็จ · ${(data.tasks||[]).length} tasks`; }
   fbStartListen();
   updateCloudStatus();
+  const sr=document.getElementById('sheet-sync-row');
+  if(sr) sr.style.display='flex';
   closeCloudSheet();
   toast('🔌 เชื่อมต่อสำเร็จ','success');
 }
 
 function updateCloudStatus(){
   const el=document.getElementById('m-cloud-status');
+  const btns=document.getElementById('m-sync-btns');
   if(!el)return;
-  el.innerHTML=FB.configured
-    ?`<span style="color:var(--green)">✓ เชื่อมต่อแล้ว</span><br>Sync ID: <b>${FB.syncId}</b><br>🟢 Auto-sync ON`
-    :'ยังไม่ได้เชื่อมต่อ — กด ตั้งค่า Firebase';
+  if(FB.configured){
+    el.innerHTML=`<span style="color:var(--green)">✓ เชื่อมต่อแล้ว</span><br>Sync ID: <b>${FB.syncId}</b><br>🟢 Auto-sync ON`;
+    if(btns) btns.style.display='block';
+  } else {
+    el.innerHTML='ยังไม่ได้เชื่อมต่อ — กด ตั้งค่า Firebase';
+    if(btns) btns.style.display='none';
+  }
+}
+
+async function manualPull(){
+  if(!FB.configured){ toast('ยังไม่ได้เชื่อมต่อ Firebase','error'); return; }
+  toast('⏳ กำลัง Pull...','success');
+  const data = await fbPull();
+  if(data){
+    applyData(data);
+    toast(`⬇ Pull สำเร็จ — ${(data.tasks||[]).length} tasks`,'success');
+  } else {
+    toast('ไม่พบข้อมูลบน Cloud','error');
+  }
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -722,6 +749,8 @@ function updateCloudStatus(){
   const cfg=JSON.parse(localStorage.getItem('cpm_mobile_fb')||'null');
   if(cfg&&cfg.databaseURL){
     fbInit(cfg);
+    const sr=document.getElementById('sheet-sync-row');
+    if(sr) sr.style.display='flex';
     fbPull().then(data=>{ if(data){ applyData(data); fbStartListen(); updateCloudStatus(); } });
   }
   updateTopbar();
