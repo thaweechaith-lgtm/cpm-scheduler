@@ -2821,10 +2821,10 @@ function showKpiDrilldown(type){
     return `<div class="dd-row${isCrit?' crit-row':''}" onclick="editTask(${taskIdx})">
       <div><span class="badge blue" style="font-size:9px">${r.id}</span></div>
       <div class="dd-name" style="font-size:11px;color:${isCrit?'var(--red)':'var(--txt)'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.name||''}</div>
-      <div style="font-family:var(--mono);font-size:10px;color:var(--accent)">${r.curStart||'—'}</div>
-      <div style="font-family:var(--mono);font-size:10px;color:var(--accent)">${r.curFinish||'—'}</div>
+      <div style="font-family:var(--mono);font-size:10px;color:var(--accent)">${fmtD(r.curStart)||'—'}</div>
+      <div style="font-family:var(--mono);font-size:10px;color:var(--accent)">${fmtD(r.curFinish)||'—'}</div>
       <div><span class="badge ${r.pct===100?'green':r.pct>0?'amber':'grey'}">${r.pct}%</span></div>
-      <div style="font-family:var(--mono);font-size:10px;color:${r.schedDelay>0?'var(--amber)':'var(--txt3)'}">${r.forecastFinish||'—'}</div>
+      <div style="font-family:var(--mono);font-size:10px;color:${r.schedDelay>0?'var(--amber)':'var(--txt3)'}">${fmtD(r.forecastFinish)||'—'}</div>
       <div>${delayHtml}</div>
     </div>`;
   }).join('');
@@ -2894,7 +2894,7 @@ function renderBaselineCompare(){
       const fv=bf!=='—'&&cF!=='—'?diffWD(pd(bf),pd(cF)):null;
       const svHtml=sv!==null?`<span style="font-size:8px;margin-left:2px;color:${sv>0?'var(--red)':sv<0?'var(--green)':'var(--txt3)'}">${sv>0?'+':''}${sv}d</span>`:'';
       const fvHtml=fv!==null?`<span style="font-size:8px;margin-left:2px;color:${fv>0?'var(--red)':fv<0?'var(--green)':'var(--txt3)'}">${fv>0?'+':''}${fv}d</span>`:'';
-      return `<td style="font-family:var(--mono);font-size:10px;border-left:1px solid var(--line)">${bs}${svHtml}</td><td style="font-family:var(--mono);font-size:10px">${bf}${fvHtml}</td>`;
+      return `<td style="font-family:var(--mono);font-size:10px;border-left:1px solid var(--line)">${fmtD(bs)}${svHtml}</td><td style="font-family:var(--mono);font-size:10px">${fmtD(bf)}${fvHtml}</td>`;
     }).join('');
     return `<tr class="${cls}">
       <td><span class="badge blue" style="font-size:9px">${t.id}</span></td>
@@ -3022,10 +3022,10 @@ function renderGantt(){
   // ── Auto-populate view date inputs if empty ────────────────────────────────
   const vsEl=document.getElementById('g-view-start');
   const veEl=document.getElementById('g-view-end');
-  if(vsEl && !S.gantt.viewStart) vsEl.value = S.settings.start || '';
+  if(vsEl && !S.gantt.viewStart) vsEl.value = fmtD(S.settings.start) || '';
   if(veEl && !S.gantt.viewEnd){
     const autoEndDate = addWD(projStartD, Math.min(projDur+20, 400));
-    veEl.value = ds(autoEndDate) || '';
+    veEl.value = fmtD(ds(autoEndDate)) || '';
   }
 
   const vStartDate = S.gantt.viewStart ? pd(S.gantt.viewStart) : projStartD;
@@ -3138,9 +3138,11 @@ function renderGantt(){
     const rowBg=lv===1?'#E8F1FA':lv===2?'#F0F6FC':isAlt?'#F8FAFB':'#FFFFFF';
     const nameFg=lv===1?'var(--txt)':lv===2?'var(--txt)':isCrit?'var(--red)':'var(--txt2)';
     // Summary/rollup tasks: ▐ (L1) or ▾ (L2) — Activity tasks: ▸ (L2) or ▪ (L3)
-    const indent = isSum
-      ? (lv===1 ? '▐ ' : lv===2 ? '  ▾ ' : '    ▾ ')
-      : (lv===1 ? '' : lv===2 ? '  ▸ ' : '    ▪ ');
+    // Use padding-left (not text spaces) — white-space:nowrap collapses spaces
+    const indentPx = lv===1 ? 0 : lv===2 ? 10 : 24;
+    const indentSym = isSum
+      ? (lv===1 ? '▐ ' : lv===2 ? '▾ ' : '▾ ')
+      : (lv===1 ? '' : lv===2 ? '▸ ' : '▪ ');
     const pct=r?r.pct:(s?s.pct:0);
     const ROW_H = 36;
     const taskIdx = S.tasks.indexOf(t);
@@ -3156,7 +3158,7 @@ function renderGantt(){
     const predDisp = t.predecessors ? t.predecessors.split('|').join(' ') : '';
     leftHtml+=`<div class="g-info-row${lv===1?' g-lv1':lv===2?' g-lv2':''}${isCrit?' g-crit':''}" style="background:${rowBg};height:${ROW_H}px">
       <div class="g-cell id" style="color:${isCrit?'var(--red)':'var(--txt3)'}">${t.id}</div>
-      <div class="g-cell name" style="font-size:${lv===1?12:lv===2?11:10}px;font-weight:${lv<3?600:400};color:${nameFg}">${indent}${t.name||''}</div>
+      <div class="g-cell name" style="font-size:${lv===1?12:lv===2?11:10}px;font-weight:${lv<3?600:400};color:${nameFg};padding-left:${6+indentPx}px">${indentSym}${t.name||''}</div>
       <div class="g-cell" style="font-size:9px;color:var(--accent2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border-right:1px solid var(--line);padding:4px 4px" title="${predDisp}">${predDisp}</div>
       <div class="g-cell edit date" style="color:${actScolor}" onclick="ganttEditDate(${taskIdx},'actualStart',this)" title="Click to edit">${actSdisp}</div>
       <div class="g-cell edit date" style="color:${actFcolor}" onclick="ganttEditDate(${taskIdx},'actualFinish',this)" title="Click to edit">${actFdisp}</div>
@@ -3517,13 +3519,13 @@ function showGTip(e,enc){
   const delayHtml = d.delay>0
     ? `<div style="background:rgba(249,115,22,.2);border:1px solid rgba(249,115,22,.4);border-radius:4px;padding:3px 8px;margin-top:4px;color:#FDBA74">⚠ Delay: +${d.delay} วันทำงาน</div>` : '';
   const blHtml = d.blS
-    ? `<div style="color:#94A3B8"><span style="color:#CBD5E1">📌 BL (${d.blName}):</span> ${d.blS} → ${d.blF}</div>` : '';
+    ? `<div style="color:#94A3B8"><span style="color:#CBD5E1">📌 BL (${d.blName}):</span> ${fmtD(d.blS)} → ${fmtD(d.blF)}</div>` : '';
   const actHtml = d.actS
-    ? `<div style="color:#86EFAC"><span style="color:#CBD5E1">✅ Actual:</span> ${d.actS} → ${d.actF||'กำลังดำเนินการ'}</div>` : '';
+    ? `<div style="color:#86EFAC"><span style="color:#CBD5E1">✅ Actual:</span> ${fmtD(d.actS)} → ${fmtD(d.actF)||'กำลังดำเนินการ'}</div>` : '';
   tip.innerHTML=`
     <div style="font-weight:700;font-size:12px;color:#F8FAFC;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid #3B5280;line-height:1.4">${d.id} — ${d.name}</div>
     ${critHtml}
-    <div style="color:#93C5FD"><span style="color:#CBD5E1">📅 Plan:</span> ${d.curS||'—'} → ${d.curF||'—'}</div>
+    <div style="color:#93C5FD"><span style="color:#CBD5E1">📅 Plan:</span> ${fmtD(d.curS)||'—'} → ${fmtD(d.curF)||'—'}</div>
     ${blHtml}
     ${actHtml}
     <div style="margin-top:4px;display:flex;gap:12px;align-items:center">
