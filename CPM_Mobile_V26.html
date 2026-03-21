@@ -434,27 +434,27 @@ let FB={app:null,db:null,configured:false,syncId:'',listener:null};
 const FB_PLATFORM='mobile';
 
 function fbEncodeKeys(obj){
-  if(typeof obj!=='object'||obj===null)return obj;
-  if(Array.isArray(obj))return obj.map(fbEncodeKeys);
+  if(obj===null||obj===undefined||typeof obj!=='object') return obj;
+  if(Array.isArray(obj)) return obj.map(fbEncodeKeys);
   const out={};
   for(const k of Object.keys(obj)){
-    const ek=k.replace(/\./g,'__DOT__');
-    out[ek]=fbEncodeKeys(obj[k]);
+    const safe = k.replace(/\./g,'__DOT__').replace(/#/g,'__HASH__').replace(/\$/g,'__DOLLAR__').replace(/\//g,'__SLASH__').replace(/\[/g,'__LB__').replace(/\]/g,'__RB__');
+    out[safe] = fbEncodeKeys(obj[k]);
   }
   return out;
 }
 function fbDecodeKeys(obj){
-  if(typeof obj!=='object'||obj===null)return obj;
-  if(Array.isArray(obj))return obj.map(fbDecodeKeys);
+  if(obj===null||obj===undefined||typeof obj!=='object') return obj;
+  if(Array.isArray(obj)) return obj.map(fbDecodeKeys);
   const out={};
   for(const k of Object.keys(obj)){
-    const dk=k.replace(/__DOT__/g,'.');
-    out[dk]=fbDecodeKeys(obj[k]);
+    const orig = k.replace(/__DOT__/g,'.').replace(/__HASH__/g,'#').replace(/__DOLLAR__/g,'$').replace(/__SLASH__/g,'/').replace(/__LB__/g,'[').replace(/__RB__/g,']');
+    out[orig] = fbDecodeKeys(obj[k]);
   }
   return out;
 }
 
-function fbRef(){ return FB.db.ref('projects/'+FB.syncId); }
+function fbRef(){ return FB.db.ref('cpm_projects/'+FB.syncId); }
 
 function fbInit(cfg){
   try{
